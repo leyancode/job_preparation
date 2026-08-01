@@ -1,0 +1,41 @@
+Meeting Notes – 13 March 2026
+
+Main tasks discussed
+
+Performance Profiling
+
+Use the Linaro Forge profiling tool to analyse the application performance.
+
+Identify potential bottlenecks and verify whether OpenMP parallelism is effectively utilised.
+
+Plots Revision
+
+Rewrite / regenerate the performance plots to improve clarity and presentation.
+
+Ensure the plots clearly reflect the scaling behaviour and configuration differences.
+
+Report Writing
+
+Begin drafting the Project propourse (PP) report.
+
+Include preliminary analysis of the experimental results and updated figures.
+
+Further Experiments
+
+Test the program on different node configurations.
+
+Consider experiments with:
+
+4 nodes
+
+8 nodes (after confirming that OpenMP is correctly enabled and used).
+
+Next Steps
+
+Run profiling with Linaro Forge.
+
+Update the scaling plots.
+
+Start writing the PP draft.
+
+Perform additional runs on larger node counts once OpenMP usage is verified.

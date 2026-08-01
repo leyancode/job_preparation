@@ -1,0 +1,25 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Hierarchy of an ARCHER2 compute node. Each node has two 64-core AMD EPYC 7742 processors, eight 16-core NUMA regions, and four-core CCXs that each share 16\,MB of L3 cache. Source: ARCHER2 hardware documentation \blx@tocontentsinit {0}\cite {archer2_hardware}.}}{7}{figure.2.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Single-node default-solver sweep on a $1000\times 1000$ grid. Adding OpenMP threads to one MPI rank leaves the cost per iteration almost unchanged; adding MPI ranks at one thread each reduces it by two orders of magnitude. Both lines start from the same one-rank, one-thread run.}}{13}{figure.3.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Median 2D repeated-solve throughput along the two unknowns/core chains. Whiskers show the observed range of three formal runs. All layouts use 128 cores per node, so a fixed node count means a fixed core count.}}{17}{figure.4.1}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces 2D time per KSP iteration relative to the $128\times 1$ baseline at the same size--node pair; values below 1 mean the hybrid layout is faster. Whiskers propagate the observed range of three formal runs.}}{18}{figure.4.2}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Median 3D repeated-solve throughput along the two unknowns/core chains. Whiskers show the observed range of three formal runs.}}{19}{figure.4.3}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces 3D time per KSP iteration relative to the $128\times 1$ baseline at the same size--node pair. Unlike the 2D case in \Cref {fig:2d-ratio}, no series is monotone.}}{19}{figure.4.4}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Median 2D time per KSP iteration along the two unknowns/core chains. A horizontal line would be ideal weak scaling.}}{20}{figure.4.5}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Median 3D time per KSP iteration along the two unknowns/core chains.}}{20}{figure.4.6}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces 2D time per solve at a fixed 20.25M unknowns, one to 32 nodes. Both axes are logarithmic, so ideal strong scaling is a straight line of slope $-1$. Whiskers show the observed range of three formal runs.}}{22}{figure.4.7}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces 3D time per solve at a fixed 20.35M unknowns, one to 32 nodes. Flat MPI and $64\times 2$ reach a minimum and then get slower, while the two most-threaded layouts continue to improve.}}{23}{figure.4.8}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces 3D parallel efficiency at a fixed 20.35M unknowns, each layout against its own one-node time. Because the baselines differ, this figure ranks scaling behaviour and not speed; flat MPI falls to 10.9\% at 32 nodes while $16\times 8$ retains 44.5\%.}}{23}{figure.4.9}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Where the cores are during the solve, from the MAP call trees. Within each panel the OpenMP waiting share grows and the MPI share shrinks as threads replace ranks, and both effects strengthen with node count. Paired bars are the two PETSc builds at the same configuration.}}{29}{figure.5.1}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces 2D share of \texttt {RepeatedSolves} \texttt {KSPSolve} time spent inside halo exchange and global reduction events. The ordering matches the time-per-iteration ordering in \Cref {fig:2d-ratio} at every node count.}}{30}{figure.5.2}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces 3D share of \texttt {RepeatedSolves} \texttt {KSPSolve} time spent inside halo exchange and global reduction events. Note the vertical scale: flat MPI reaches 84.6\% at the largest point.}}{31}{figure.5.3}%
+\contentsline {figure}{\numberline {5.4}{\ignorespaces 3D exposure removed relative to flat MPI against the resulting time per iteration, one point per size--node pair. Where a layout's fitted line crosses parity is the break-even column of \Cref {tab:sync-breakeven}; the lines are descriptive, not predictive.}}{31}{figure.5.4}%
+\contentsline {figure}{\numberline {5.5}{\ignorespaces 2D exposure removed relative to flat MPI against the resulting time per iteration. Compare with \Cref {fig:3d-tradeoff}: $64\times 2$ and $32\times 4$ descend as they do in 3D, but $16\times 8$ sits well above parity at every point with no slope at all.}}{32}{figure.5.5}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

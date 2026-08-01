@@ -1,0 +1,7 @@
+scale,m,n,unknowns,ranks,threads,total_cores,rep,mode
+tiny,8,8,64,1,1,1,1,dry-run
+tiny,8,8,64,1,2,2,1,dry-run
+tiny,8,8,64,1,4,4,1,dry-run
+tiny,8,8,64,2,1,2,1,dry-run
+tiny,8,8,64,2,2,4,1,dry-run
+tiny,8,8,64,4,1,4,1,dry-run

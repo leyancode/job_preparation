@@ -1,0 +1,8 @@
+.venv/
+.matplotlib-cache/
+__pycache__/
+*.pyc
+
+# Temporary scratch files
+outputs/tmp*
+outputs/*.scratch.*

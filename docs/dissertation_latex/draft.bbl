@@ -1,0 +1,641 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global}
+    \entry{petsc_manual_324}{report}{}
+      \name{author}{35}{}{%
+        {{hash=0661bc042688479e939e81e7f9185f66}{%
+           family={Balay},
+           familyi={B\bibinitperiod},
+           given={Satish},
+           giveni={S\bibinitperiod}}}%
+        {{hash=c2f21e31f748bc7b4a64b259db788eab}{%
+           family={Abhyankar},
+           familyi={A\bibinitperiod},
+           given={Shrirang},
+           giveni={S\bibinitperiod}}}%
+        {{hash=959ac040d7ba16c2dff27ceb9eac401a}{%
+           family={Adams},
+           familyi={A\bibinitperiod},
+           given={Mark\bibnamedelima F.},
+           giveni={M\bibinitperiod\bibinitdelim F\bibinitperiod}}}%
+        {{hash=fef4129fbe0a2d22d709b949c991bd5d}{%
+           family={Benson},
+           familyi={B\bibinitperiod},
+           given={Steven},
+           giveni={S\bibinitperiod}}}%
+        {{hash=d0832f00d5cff405e609d25f1430b8a9}{%
+           family={Brown},
+           familyi={B\bibinitperiod},
+           given={Jed},
+           giveni={J\bibinitperiod}}}%
+        {{hash=8300e613a4da2304833266877fa26671}{%
+           family={Brune},
+           familyi={B\bibinitperiod},
+           given={Peter},
+           giveni={P\bibinitperiod}}}%
+        {{hash=0ae21ec60c05b5bb08bc6babeaa201be}{%
+           family={Buschelman},
+           familyi={B\bibinitperiod},
+           given={Kris},
+           giveni={K\bibinitperiod}}}%
+        {{hash=582949948f9a938c966c5c8d0f6ced6c}{%
+           family={Constantinescu},
+           familyi={C\bibinitperiod},
+           given={Emil\bibnamedelima M.},
+           giveni={E\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=6600c3041cf5eea1f4cc4c7e4ffbd9b3}{%
+           family={Dalcin},
+           familyi={D\bibinitperiod},
+           given={Lisandro},
+           giveni={L\bibinitperiod}}}%
+        {{hash=b32b95ca1dca518b3280bd4475e5a0e2}{%
+           family={Dener},
+           familyi={D\bibinitperiod},
+           given={Alp},
+           giveni={A\bibinitperiod}}}%
+        {{hash=8f5cf31bd93743a8ea5093c586cacf29}{%
+           family={Eijkhout},
+           familyi={E\bibinitperiod},
+           given={Victor},
+           giveni={V\bibinitperiod}}}%
+        {{hash=75b6ce2f37fd1549e7e27582c27d09a6}{%
+           family={Faibussowitsch},
+           familyi={F\bibinitperiod},
+           given={Jacob},
+           giveni={J\bibinitperiod}}}%
+        {{hash=bd255efb59b040d722e81a5909d3904e}{%
+           family={Gropp},
+           familyi={G\bibinitperiod},
+           given={William\bibnamedelima D.},
+           giveni={W\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+        {{hash=ccf0df9ab87df36ef41518d205a4604e}{%
+           family={Hapla},
+           familyi={H\bibinitperiod},
+           given={Václav},
+           giveni={V\bibinitperiod}}}%
+        {{hash=e4411247ea414fec2869c63bf492c4e7}{%
+           family={Isaac},
+           familyi={I\bibinitperiod},
+           given={Tobin},
+           giveni={T\bibinitperiod}}}%
+        {{hash=8e03c2859e0bef48ba6ebdc1e4e7b8c0}{%
+           family={Jolivet},
+           familyi={J\bibinitperiod},
+           given={Pierre},
+           giveni={P\bibinitperiod}}}%
+        {{hash=369c04fb39d5d228a55ce1edb1bbc3e1}{%
+           family={Karpeev},
+           familyi={K\bibinitperiod},
+           given={Dmitry},
+           giveni={D\bibinitperiod}}}%
+        {{hash=5ccd554baf55c6d85a260dc5d7e44fb1}{%
+           family={Kaushik},
+           familyi={K\bibinitperiod},
+           given={Dinesh},
+           giveni={D\bibinitperiod}}}%
+        {{hash=9c6f3ced22bd7f4f0ef92d9b25467df8}{%
+           family={Knepley},
+           familyi={K\bibinitperiod},
+           given={Matthew\bibnamedelima G.},
+           giveni={M\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=bf4d2a02e8b1cd7e4f6bd3e54d79f79c}{%
+           family={Kong},
+           familyi={K\bibinitperiod},
+           given={Fande},
+           giveni={F\bibinitperiod}}}%
+        {{hash=374b0dd310a0f3561dadcf3c5f50f29b}{%
+           family={Kruger},
+           familyi={K\bibinitperiod},
+           given={Scott},
+           giveni={S\bibinitperiod}}}%
+        {{hash=0ebe7fcda5fd1670ec42548a2907345b}{%
+           family={May},
+           familyi={M\bibinitperiod},
+           given={Dave\bibnamedelima A.},
+           giveni={D\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=65f9dd1eb923bd39cbd7ae2d5bc637cd}{%
+           family={McInnes},
+           familyi={M\bibinitperiod},
+           given={Lois\bibnamedelima Curfman},
+           giveni={L\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=f163c0252aac8e7946cafd8e23ad2eb8}{%
+           family={Mills},
+           familyi={M\bibinitperiod},
+           given={Richard\bibnamedelima Tran},
+           giveni={R\bibinitperiod\bibinitdelim T\bibinitperiod}}}%
+        {{hash=c3d2dd208320fbff028a717299314776}{%
+           family={Mitchell},
+           familyi={M\bibinitperiod},
+           given={Lawrence},
+           giveni={L\bibinitperiod}}}%
+        {{hash=c46b29e87e640530b5a9570457f27914}{%
+           family={Munson},
+           familyi={M\bibinitperiod},
+           given={Todd},
+           giveni={T\bibinitperiod}}}%
+        {{hash=c565a90c3612c76ef58cacd05f6fac66}{%
+           family={Roman},
+           familyi={R\bibinitperiod},
+           given={Jose\bibnamedelima E.},
+           giveni={J\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=b324ba6bbe80060fa05a80690c4f588a}{%
+           family={Rupp},
+           familyi={R\bibinitperiod},
+           given={Karl},
+           giveni={K\bibinitperiod}}}%
+        {{hash=0bfdbd2b1496ab57da946927ff242a3f}{%
+           family={Sanan},
+           familyi={S\bibinitperiod},
+           given={Patrick},
+           giveni={P\bibinitperiod}}}%
+        {{hash=9db49fdb58e00406730fc3db518c1336}{%
+           family={Sarich},
+           familyi={S\bibinitperiod},
+           given={Jason},
+           giveni={J\bibinitperiod}}}%
+        {{hash=db20e2f433b4eee5280b269cfbfcc84f}{%
+           family={Smith},
+           familyi={S\bibinitperiod},
+           given={Barry\bibnamedelima F.},
+           giveni={B\bibinitperiod\bibinitdelim F\bibinitperiod}}}%
+        {{hash=a18fe5e8843c33f8a2be9fa25d783eaf}{%
+           family={Suh},
+           familyi={S\bibinitperiod},
+           given={Hansol},
+           giveni={H\bibinitperiod}}}%
+        {{hash=102a753d9421d7549a9a4af2337a58e3}{%
+           family={Zampini},
+           familyi={Z\bibinitperiod},
+           given={Stefano},
+           giveni={S\bibinitperiod}}}%
+        {{hash=5c197210ea3c3cd10b35ad3c6922e157}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Hong},
+           giveni={H\bibinitperiod}}}%
+        {{hash=86db8c22e64b1a0116ba22876f777b6f}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Junchao},
+           giveni={J\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Argonne National Laboratory}%
+      }
+      \strng{namehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{fullhash}{fcc8cdcc13ac13243fe6a00567b0bb6e}
+      \strng{bibnamehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{authorbibnamehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{authornamehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{authorfullhash}{fcc8cdcc13ac13243fe6a00567b0bb6e}
+      \field{extraname}{1}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{number}{ANL-21/39 Rev. 3.24}
+      \field{title}{{PETSc/TAO} Users Manual, Revision 3.24}
+      \field{type}{techreport}
+      \field{year}{2025}
+      \verb{doi}
+      \verb 10.2172/2998643
+      \endverb
+    \endentry
+    \entry{petsc1997}{incollection}{}
+      \name{author}{4}{}{%
+        {{hash=0661bc042688479e939e81e7f9185f66}{%
+           family={Balay},
+           familyi={B\bibinitperiod},
+           given={Satish},
+           giveni={S\bibinitperiod}}}%
+        {{hash=bd255efb59b040d722e81a5909d3904e}{%
+           family={Gropp},
+           familyi={G\bibinitperiod},
+           given={William\bibnamedelima D.},
+           giveni={W\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+        {{hash=65f9dd1eb923bd39cbd7ae2d5bc637cd}{%
+           family={McInnes},
+           familyi={M\bibinitperiod},
+           given={Lois\bibnamedelima Curfman},
+           giveni={L\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=db20e2f433b4eee5280b269cfbfcc84f}{%
+           family={Smith},
+           familyi={S\bibinitperiod},
+           given={Barry\bibnamedelima F.},
+           giveni={B\bibinitperiod\bibinitdelim F\bibinitperiod}}}%
+      }
+      \name{editor}{3}{}{%
+        {{hash=f70410ff9d2dfabdc34247d38bf37325}{%
+           family={Arge},
+           familyi={A\bibinitperiod},
+           given={Eirik},
+           giveni={E\bibinitperiod}}}%
+        {{hash=6e6b922b5a909649b1660d00c3f39a80}{%
+           family={Bruaset},
+           familyi={B\bibinitperiod},
+           given={Are\bibnamedelima Magnus},
+           giveni={A\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=b1ba9610a18cb091d0a9602e75b8476f}{%
+           family={Langtangen},
+           familyi={L\bibinitperiod},
+           given={Hans\bibnamedelima Petter},
+           giveni={H\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Boston}%
+      }
+      \list{publisher}{1}{%
+        {Birkhäuser}%
+      }
+      \strng{namehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{fullhash}{daee1bbf0518b772df43da790bb903e0}
+      \strng{bibnamehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{authorbibnamehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{authornamehash}{456de0534e91c8a938d1b1a557f67342}
+      \strng{authorfullhash}{daee1bbf0518b772df43da790bb903e0}
+      \strng{editorbibnamehash}{3ad9ff4274f7e54a9befd1044d3e6b0d}
+      \strng{editornamehash}{3ad9ff4274f7e54a9befd1044d3e6b0d}
+      \strng{editorfullhash}{3ad9ff4274f7e54a9befd1044d3e6b0d}
+      \field{extraname}{2}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Modern Software Tools in Scientific Computing}
+      \field{title}{Efficient Management of Parallelism in Object-Oriented Numerical Software Libraries}
+      \field{year}{1997}
+      \field{pages}{163\bibrangedash 202}
+      \range{pages}{40}
+      \verb{doi}
+      \verb 10.1007/978-1-4612-1986-6_8
+      \endverb
+    \endentry
+    \entry{petsc_openmp_backend}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f4554bb94c60d59f44639e30fd6ae3bc}{%
+           family={{PETSc Development Team}},
+           familyi={P\bibinitperiod}}}%
+      }
+      \strng{namehash}{f4554bb94c60d59f44639e30fd6ae3bc}
+      \strng{fullhash}{f4554bb94c60d59f44639e30fd6ae3bc}
+      \strng{bibnamehash}{f4554bb94c60d59f44639e30fd6ae3bc}
+      \strng{authorbibnamehash}{f4554bb94c60d59f44639e30fd6ae3bc}
+      \strng{authornamehash}{f4554bb94c60d59f44639e30fd6ae3bc}
+      \strng{authorfullhash}{f4554bb94c60d59f44639e30fd6ae3bc}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Changes: 3.22}
+      \field{urlday}{22}
+      \field{urlmonth}{7}
+      \field{urlyear}{2026}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://petsc.org/release/changes/322/
+      \endverb
+      \verb{url}
+      \verb https://petsc.org/release/changes/322/
+      \endverb
+    \endentry
+    \entry{mpi41}{manual}{}
+      \name{author}{1}{}{%
+        {{hash=359ad8827213b9603bcd85050a9242ef}{%
+           family={{MPI Forum}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{359ad8827213b9603bcd85050a9242ef}
+      \strng{fullhash}{359ad8827213b9603bcd85050a9242ef}
+      \strng{bibnamehash}{359ad8827213b9603bcd85050a9242ef}
+      \strng{authorbibnamehash}{359ad8827213b9603bcd85050a9242ef}
+      \strng{authornamehash}{359ad8827213b9603bcd85050a9242ef}
+      \strng{authorfullhash}{359ad8827213b9603bcd85050a9242ef}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{11}
+      \field{title}{{MPI}: A Message-Passing Interface Standard, Version 4.1}
+      \field{urlday}{22}
+      \field{urlmonth}{7}
+      \field{urlyear}{2026}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report.pdf
+      \endverb
+      \verb{url}
+      \verb https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report.pdf
+      \endverb
+    \endentry
+    \entry{openmp52}{manual}{}
+      \name{author}{1}{}{%
+        {{hash=d9c1cca3c39d86eea86d0fdfa7d70cfd}{%
+           family={{OpenMP Architecture Review Board}},
+           familyi={O\bibinitperiod}}}%
+      }
+      \strng{namehash}{d9c1cca3c39d86eea86d0fdfa7d70cfd}
+      \strng{fullhash}{d9c1cca3c39d86eea86d0fdfa7d70cfd}
+      \strng{bibnamehash}{d9c1cca3c39d86eea86d0fdfa7d70cfd}
+      \strng{authorbibnamehash}{d9c1cca3c39d86eea86d0fdfa7d70cfd}
+      \strng{authornamehash}{d9c1cca3c39d86eea86d0fdfa7d70cfd}
+      \strng{authorfullhash}{d9c1cca3c39d86eea86d0fdfa7d70cfd}
+      \field{sortinit}{5}
+      \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{11}
+      \field{title}{{OpenMP} Application Programming Interface, Version 5.2}
+      \field{urlday}{22}
+      \field{urlmonth}{7}
+      \field{urlyear}{2026}
+      \field{year}{2021}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.openmp.org/wp-content/uploads/OpenMP-API-Specification-5-2.pdf
+      \endverb
+      \verb{url}
+      \verb https://www.openmp.org/wp-content/uploads/OpenMP-API-Specification-5-2.pdf
+      \endverb
+    \endentry
+    \entry{judge2022mpiopenmp}{inproceedings}{}
+      \name{author}{1}{}{%
+        {{hash=c385fad05d686986989ed123030e41dd}{%
+           family={Judge},
+           familyi={J\bibinitperiod},
+           given={Holly},
+           giveni={H\bibinitperiod}}}%
+      }
+      \strng{namehash}{c385fad05d686986989ed123030e41dd}
+      \strng{fullhash}{c385fad05d686986989ed123030e41dd}
+      \strng{bibnamehash}{c385fad05d686986989ed123030e41dd}
+      \strng{authorbibnamehash}{c385fad05d686986989ed123030e41dd}
+      \strng{authornamehash}{c385fad05d686986989ed123030e41dd}
+      \strng{authorfullhash}{c385fad05d686986989ed123030e41dd}
+      \field{sortinit}{6}
+      \field{sortinithash}{b33bc299efb3c36abec520a4c896a66d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the Cray User Group 2022}
+      \field{title}{Effective Use of {MPI+OpenMP} on a {Cray EX} Supercomputer}
+      \field{urlday}{22}
+      \field{urlmonth}{7}
+      \field{urlyear}{2026}
+      \field{year}{2022}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://cug.org/proceedings/cug2022_proceedings/includes/files/pap104s2-file1.pdf
+      \endverb
+      \verb{url}
+      \verb https://cug.org/proceedings/cug2022_proceedings/includes/files/pap104s2-file1.pdf
+      \endverb
+    \endentry
+    \entry{lange_petsc_hybrid}{inproceedings}{}
+      \name{author}{5}{}{%
+        {{hash=118db22040057f5c18be05652e4cd362}{%
+           family={Lange},
+           familyi={L\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod}}}%
+        {{hash=8273de4b38f6f03ff88c8236e9f29a4b}{%
+           family={Gorman},
+           familyi={G\bibinitperiod},
+           given={Gerard},
+           giveni={G\bibinitperiod}}}%
+        {{hash=3befe956faa70fa18a057fdc0e3fba03}{%
+           family={Weiland},
+           familyi={W\bibinitperiod},
+           given={Michèle},
+           giveni={M\bibinitperiod}}}%
+        {{hash=c3d2dd208320fbff028a717299314776}{%
+           family={Mitchell},
+           familyi={M\bibinitperiod},
+           given={Lawrence},
+           giveni={L\bibinitperiod}}}%
+        {{hash=77c66fc65d9bfff31c35b34bdd37d3d3}{%
+           family={Southern},
+           familyi={S\bibinitperiod},
+           given={James},
+           giveni={J\bibinitperiod}}}%
+      }
+      \name{editor}{3}{}{%
+        {{hash=e3023e3f5444909ad130e78eec478508}{%
+           family={Kunkel},
+           familyi={K\bibinitperiod},
+           given={Julian\bibnamedelima M.},
+           giveni={J\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=e2d1e0dea4ec2689968281047badb2d2}{%
+           family={Ludwig},
+           familyi={L\bibinitperiod},
+           given={Thomas},
+           giveni={T\bibinitperiod}}}%
+        {{hash=2bd26d4bad81d8841300e106ae09d3b0}{%
+           family={Meuer},
+           familyi={M\bibinitperiod},
+           given={Hans\bibnamedelima Werner},
+           giveni={H\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Berlin, Heidelberg}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{7311cfe7f147f499ab287b56dabf0387}
+      \strng{fullhash}{55d6ddc1dd48cceffa6d9a508bab6c96}
+      \strng{bibnamehash}{7311cfe7f147f499ab287b56dabf0387}
+      \strng{authorbibnamehash}{7311cfe7f147f499ab287b56dabf0387}
+      \strng{authornamehash}{7311cfe7f147f499ab287b56dabf0387}
+      \strng{authorfullhash}{55d6ddc1dd48cceffa6d9a508bab6c96}
+      \strng{editorbibnamehash}{f4eff15f27a0264d8b7bcb42f3a09786}
+      \strng{editornamehash}{f4eff15f27a0264d8b7bcb42f3a09786}
+      \strng{editorfullhash}{f4eff15f27a0264d8b7bcb42f3a09786}
+      \field{sortinit}{7}
+      \field{sortinithash}{108d0be1b1bee9773a1173443802c0a3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Euro-Par 2012: Parallel Processing Workshops}
+      \field{title}{Achieving Efficient Strong Scaling with {PETSc} Using Hybrid {MPI/OpenMP} Optimisation}
+      \field{year}{2013}
+      \field{pages}{11\bibrangedash 20}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.1007/978-3-642-38750-0_8
+      \endverb
+    \endentry
+    \entry{archer2_hardware}{online}{}
+      \name{author}{1}{}{%
+        {{hash=ab500eced9adaefec2db49b24d99acf4}{%
+           family={{ARCHER2 Service}},
+           familyi={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{fullhash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{bibnamehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{authorbibnamehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{authornamehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{authorfullhash}{ab500eced9adaefec2db49b24d99acf4}
+      \field{extraname}{1}
+      \field{sortinit}{9}
+      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{ARCHER2} Hardware}
+      \field{urlday}{22}
+      \field{urlmonth}{7}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://docs.archer2.ac.uk/user-guide/hardware/
+      \endverb
+      \verb{url}
+      \verb https://docs.archer2.ac.uk/user-guide/hardware/
+      \endverb
+    \endentry
+    \entry{archer2_tuning}{online}{}
+      \name{author}{1}{}{%
+        {{hash=ab500eced9adaefec2db49b24d99acf4}{%
+           family={{ARCHER2 Service}},
+           familyi={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{fullhash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{bibnamehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{authorbibnamehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{authornamehash}{ab500eced9adaefec2db49b24d99acf4}
+      \strng{authorfullhash}{ab500eced9adaefec2db49b24d99acf4}
+      \field{extraname}{2}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Performance Tuning}
+      \field{urlday}{22}
+      \field{urlmonth}{7}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://docs.archer2.ac.uk/user-guide/tuning/
+      \endverb
+      \verb{url}
+      \verb https://docs.archer2.ac.uk/user-guide/tuning/
+      \endverb
+    \endentry
+    \entry{hestenes1952cg}{article}{}
+      \name{author}{2}{}{%
+        {{hash=f6c6be7ca0c4fd448c1ed3d1f5586b29}{%
+           family={Hestenes},
+           familyi={H\bibinitperiod},
+           given={Magnus\bibnamedelima R.},
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+        {{hash=21b4a8741247ba566d702dfa0c9fef9b}{%
+           family={Stiefel},
+           familyi={S\bibinitperiod},
+           given={Eduard},
+           giveni={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{60eabe8de5d9700d9da9f2aee6e8c630}
+      \strng{fullhash}{60eabe8de5d9700d9da9f2aee6e8c630}
+      \strng{bibnamehash}{60eabe8de5d9700d9da9f2aee6e8c630}
+      \strng{authorbibnamehash}{60eabe8de5d9700d9da9f2aee6e8c630}
+      \strng{authornamehash}{60eabe8de5d9700d9da9f2aee6e8c630}
+      \strng{authorfullhash}{60eabe8de5d9700d9da9f2aee6e8c630}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Research of the National Bureau of Standards}
+      \field{number}{6}
+      \field{title}{Methods of Conjugate Gradients for Solving Linear Systems}
+      \field{volume}{49}
+      \field{year}{1952}
+      \field{pages}{409\bibrangedash 436}
+      \range{pages}{28}
+      \verb{doi}
+      \verb 10.6028/jres.049.044
+      \endverb
+    \endentry
+    \entry{stuben2001amg}{article}{}
+      \name{author}{1}{}{%
+        {{hash=0f45b08207e9d3210a5038e690578335}{%
+           family={Stüben},
+           familyi={S\bibinitperiod},
+           given={Klaus},
+           giveni={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{0f45b08207e9d3210a5038e690578335}
+      \strng{fullhash}{0f45b08207e9d3210a5038e690578335}
+      \strng{bibnamehash}{0f45b08207e9d3210a5038e690578335}
+      \strng{authorbibnamehash}{0f45b08207e9d3210a5038e690578335}
+      \strng{authornamehash}{0f45b08207e9d3210a5038e690578335}
+      \strng{authorfullhash}{0f45b08207e9d3210a5038e690578335}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Computational and Applied Mathematics}
+      \field{number}{1--2}
+      \field{title}{A Review of Algebraic Multigrid}
+      \field{volume}{128}
+      \field{year}{2001}
+      \field{pages}{281\bibrangedash 309}
+      \range{pages}{29}
+      \verb{doi}
+      \verb 10.1016/S0377-0427(00)00516-1
+      \endverb
+    \endentry
+    \entry{linaro_map_2504}{online}{}
+      \name{author}{1}{}{%
+        {{hash=aaa82239861a4c8cfe07cf67c40d5335}{%
+           family={{Linaro Limited}},
+           familyi={L\bibinitperiod}}}%
+      }
+      \strng{namehash}{aaa82239861a4c8cfe07cf67c40d5335}
+      \strng{fullhash}{aaa82239861a4c8cfe07cf67c40d5335}
+      \strng{bibnamehash}{aaa82239861a4c8cfe07cf67c40d5335}
+      \strng{authorbibnamehash}{aaa82239861a4c8cfe07cf67c40d5335}
+      \strng{authornamehash}{aaa82239861a4c8cfe07cf67c40d5335}
+      \strng{authorfullhash}{aaa82239861a4c8cfe07cf67c40d5335}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Linaro Forge 25.0.4 documentation}
+      \field{title}{{Linaro MAP}}
+      \field{urlday}{22}
+      \field{urlmonth}{7}
+      \field{urlyear}{2026}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://docs.linaroforge.com/25.0.4/html/forge/forge/introduction_to_forge/map.html
+      \endverb
+      \verb{url}
+      \verb https://docs.linaroforge.com/25.0.4/html/forge/forge/introduction_to_forge/map.html
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

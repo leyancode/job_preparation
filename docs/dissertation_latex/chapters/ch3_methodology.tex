@@ -1,0 +1,85 @@
+\chapter{Experimental Platform and Methodology}
+\label{ch:methodology}
+% Prose below is the plain-English synthesis (05). Fuller material and Chinese notes:
+% ../dissertation_prep/01_draft_ch3_methodology.md.
+
+\section{Hardware and Software Environment}
+\label{sec:env}
+All experiments ran on ARCHER2. Each node has two AMD EPYC 7742 processors, 128 physical
+cores, and eight NUMA regions of 16 cores each. The software stack was PrgEnv-gnu 8.4.0,
+gcc 11.2.0, and cray-mpich 8.1.27. PETSc 3.24.4 was built from source as
+\texttt{arch-omp-opt} with \texttt{--with-openmp=1 --with-openmp-kernels=1} and
+\texttt{-O3}. One thread per rank is used as the MPI-only baseline.
+% TODO: expand from 01 §3.1 (Core Complex Dies, shared L3, 2.25 GHz base frequency).
+
+\section{Benchmark Problems and Drivers}
+\label{sec:benchmarks}
+The 2D benchmark is PETSc \texttt{ex2}, a five-point stencil discretisation of the Laplace
+operator on an $m \times n$ grid. The 3D benchmark is a driver written for this project, a
+seven-point stencil on an $m \times n \times p$ grid; it was added because the
+surface-to-volume ratio differs from 2D. Profiling uses \texttt{ex2\_repeat}
+(\Cref{ch:profiling}).
+
+\section{Solver Configuration}
+\label{sec:solver}
+The default \texttt{ex2} solver is GMRES with block Jacobi. At $4500 \times 4500$ and
+above, the error norm reached order $10^{10}$, so the iteration did not converge within
+the default limit. The solver was changed rather than the tolerance relaxed. Production
+runs use
+\begin{verbatim}
+-ksp_type cg -pc_type gamg -ksp_rtol 1e-5 -ksp_atol 1e-10
+\end{verbatim}
+CG applies because the discretised Laplacian is symmetric positive definite. GAMG is used
+because multigrid convergence is close to mesh-independent for elliptic problems. Across
+5.0M to 41.0M unknowns the solver takes 11--12 iterations with an error norm of order
+$10^{-2}$ ($0.026$ at $4500 \times 4500$). Constant iteration counts mean runtime
+differences reflect per-iteration and setup cost, not iteration count.
+
+GAMG cost has two phases: setup (\texttt{PCSetUp}, building the coarse hierarchy) and
+solve (\texttt{KSPSolve}). In a single-solve run, setup is about 45\% of runtime; in
+applications the preconditioner is reused across solves. \Cref{ch:singlenode,ch:multinode}
+report total time including setup; \Cref{ch:profiling} isolates the solve phase.
+% TODO(G1): replace "order 10^10" with a table (default vs CG+GAMG: error/iters/runtime).
+
+\section{Configuration Space and Selection Rules}
+\label{sec:configspace}
+Three rules reduce the space.
+
+Threads per rank are restricted to $\{1,2,4,8\}$. A single-node sweep showed 16 or more
+threads per rank were slower at every core count, and a single rank (pure OpenMP) reduced
+runtime by under 20\% from 1 to 128 threads. At eight threads or fewer a rank stays within
+one or two NUMA regions.
+
+Nodes are fully populated: $\text{ppn} \times \text{threads} = 128$, giving four layouts
+$128\times1$, $64\times2$, $32\times4$, and $16\times8$. Same node count means same core
+count, so a comparison isolates rank--thread balance from core count.
+
+A configuration at size $N$ on $C$ cores is included only if $10^4 < N/C < 10^6$. This
+sets the valid node counts per size. Four sizes are used: 5.0M, 10.0M, 20.25M, and 41.0M.
+The 2D and 3D grid dimensions are matched per nominal size (for example
+$4500^2 \approx 273^3 \approx 20.25\,\text{M}$).
+
+\section{Job Configuration and Thread Placement}
+\label{sec:placement}
+Each rank and its threads are pinned to a contiguous set of cores with:
+\begin{verbatim}
+OMP_PLACES=cores   OMP_PROC_BIND=close
+srun --hint=nomultithread --distribution=block:block --exact
+\end{verbatim}
+% TODO: from 01 §3.5 — why this pinning follows from the NUMA layout.
+
+\section{Metrics}
+\label{sec:metrics}
+Runtime is the maximum \texttt{Time (sec)} over ranks from \texttt{-log\_view}, taken as
+the median over repetitions. Scaling is computed per layout against that layout's smallest
+node count (node-relative, not single-core; this differs from the feasibility study). For
+a layout $\ell$ at $n$ nodes,
+\[
+  S_\ell(n) = \frac{T_\ell(n_0)}{T_\ell(n)}, \qquad
+  E_\ell(n) = \frac{S_\ell(n)}{n/n_0},
+\]
+where $n_0$ is the smallest node count run for that problem size.
+
+\section{Reproducibility}
+\label{sec:repro}
+% TODO: from 01 §3.7 — scripts, drivers, raw logs, one-command figure regeneration.

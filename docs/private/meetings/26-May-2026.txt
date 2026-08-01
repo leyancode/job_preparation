@@ -1,0 +1,167 @@
+# MSc Meeting Minutes - 26-May-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Ongoing Actions
+
+* Dissertation benchmarking experiment design
+* PETSc OpenMP backend evaluation on ARCHER2
+* Preparation of reproducible experiment scripts, results tables, and profiling outputs
+
+## Minutes
+
+### Dissertation Timeline
+
+* Confirmed the main dissertation submission deadline:
+  - Report, repository, and presentation slides due on 14-August-2026 at 4pm.
+* Final talks are expected in the week beginning 17-August-2026.
+* The summer work should therefore focus on producing a complete, reproducible benchmarking study with clear measurable outcomes.
+
+### Overall Project Objective
+
+* The project objective is to evaluate the PETSc OpenMP backend against traditional MPI-only execution on ARCHER2.
+* The study will compare 2D five-point stencil and 3D seven-point stencil problems.
+* The main performance focus will be scalability, communication behaviour, OpenMP thread efficiency, and practical MPI rank / OpenMP thread configuration choices.
+
+### Benchmark Scope
+
+* The existing 2D benchmark should be extended to include a 3D stencil case.
+* The 2D case will use a five-point stencil, where each grid point depends on itself and four direct neighbours.
+* The 3D case will use a seven-point stencil, where each grid point depends on itself and six direct neighbours along the x, y, and z directions.
+* Both 2D and 3D cases should be assessed using the same benchmarking methodology.
+* Correctness information should be recorded for each run, including solver convergence, residual norm, and iteration count.
+
+### Problem Sizes
+
+* Experiments should include multiple problem scales rather than only very small examples.
+* Target sizes should include approximately 20 million and 40 million unknowns, where unknowns refer to total grid points or degrees of freedom.
+* Suggested large 2D sizes:
+  - Approximately 20M unknowns: 4500 x 4500
+  - Approximately 40M unknowns: 6400 x 6400
+* Suggested large 3D sizes:
+  - Approximately 20M unknowns: 272 x 272 x 272
+  - Approximately 40M unknowns: 345 x 345 x 345
+* Smaller baseline cases should also be retained, including approximately 1M and 5M unknowns.
+* Very large cases should be attempted if feasible, but runs must remain stable in memory use and solver convergence.
+
+### MPI-only and Hybrid MPI+OpenMP Configurations
+
+* The experiment should compare MPI-only and hybrid MPI+OpenMP configurations at fixed total core counts.
+* Single-node ARCHER2 tests should use up to 128 cores.
+* Example fixed-core comparisons include:
+  - 32 cores: 32 x 1 MPI-only, plus 16 x 2, 8 x 4, and 4 x 8 hybrid configurations.
+  - 64 cores: 64 x 1 MPI-only, plus 32 x 2, 16 x 4, 8 x 8, and 4 x 16 hybrid configurations.
+  - 128 cores: 128 x 1 MPI-only, plus 64 x 2, 32 x 4, 16 x 8, 8 x 16, and 4 x 32 hybrid configurations.
+* Each configuration should be run at least three times.
+* Runtime results should report the mean and standard deviation to show variability.
+
+### Scalability Metrics
+
+* The main metrics will be runtime, speedup, parallel efficiency, and hybrid relative speedup.
+* Runtime should be recorded as T(p).
+* Speedup should be computed as S(p) = T(1) / T(p).
+* Parallel efficiency should be computed as E(p) = S(p) / p.
+* Hybrid relative speedup should compare T(MPI-only) / T(hybrid) at the same total core count.
+* More than 5 percent improvement should be treated as meaningful.
+* More than 10 percent improvement should be treated as strong evidence of practical benefit.
+
+### Communication Pattern Comparison
+
+* The study should explicitly compare the communication patterns of the 2D and 3D stencil problems.
+* In 2D, each subdomain communicates with up to four neighbouring subdomains.
+* In 3D, each subdomain communicates with up to six neighbouring subdomains across the faces of the local 3D block.
+* The comparison should consider:
+  - Number of stencil neighbours
+  - Number of communication directions
+  - Local computation size
+  - Boundary communication cost
+  - Boundary-to-volume or communication-to-computation ratio
+* These communication differences should be used to help explain runtime and scaling trends.
+
+### Profiling and Performance Explanation
+
+* The final study should go beyond reporting runtime numbers.
+* PETSc -log_view should be used to obtain PETSc-level timing and solver breakdowns.
+* Linaro MAP should be used for runtime profiling and MPI/OpenMP analysis where feasible.
+* At least four representative profiling cases should be collected:
+  - 2D MPI-only baseline
+  - 2D hybrid MPI+OpenMP
+  - 3D MPI-only baseline
+  - 3D hybrid MPI+OpenMP
+* Profiling should identify the top expensive PETSc routines, useful OpenMP computation, OpenMP overhead, and MPI communication or waiting time.
+* The profiling results should be used to explain at least two non-obvious or non-monotonic performance results.
+
+### Practical Configuration Guidelines
+
+* The project should aim to produce practical rank-thread configuration guidance, not only raw timing data.
+* The analysis should identify:
+  - Fastest configuration for each problem type and size
+  - Configurations that consistently perform poorly
+  - Sensitivity to 2, 4, 8, 16, and 32 OpenMP threads per MPI rank
+  - Cases where hybrid execution is useful
+  - Cases where hybrid execution introduces overhead without practical benefit
+* The final report should include 3 to 5 evidence-based configuration recommendations.
+
+### Reproducibility Requirements
+
+* The project should produce job-ready and reproducible outputs.
+* Required outputs include:
+  - Slurm scripts for single-node and multi-node experiments
+  - PETSc command-line options for all runs
+  - Environment records, including modules, compiler version, MPI version, and PETSc configuration
+  - Raw timing data in CSV or structured text files
+  - Processed runtime, speedup, and efficiency tables
+  - Python plotting scripts for final figures
+  - PETSc logs and Linaro MAP profiling summaries
+  - Final technical report explaining methodology, results, and conclusions
+
+### Matrix Representation Comparison
+
+* A further objective is to compare different PETSc matrix representations.
+* The current benchmark uses stencil-derived sparse matrices.
+* Alternative matrix representations may affect MPI-only and hybrid MPI+OpenMP performance due to storage format, assembly strategy, and kernel implementation.
+* The baseline matrix format should be MATAIJ / MATMPIAIJ.
+* Additional formats to consider include:
+  - Matrix-free operators using MATSHELL or PETSc matrix-free approaches
+  - Structured-grid operators using DMDA
+  - SELL format, if appropriate and available
+* The comparison should record runtime, memory usage where possible, matrix-vector multiplication costs, solver setup costs, and OpenMP scaling behaviour.
+* Applicability to both 2D and 3D stencil problems should be considered.
+
+### Solver Choices
+
+* Different solver choices should be tried where feasible.
+* Solver comparisons should remain secondary to the main MPI-only versus hybrid MPI+OpenMP benchmarking objective.
+* Solver settings should be recorded carefully so that results are reproducible and comparable.
+
+## Actions
+
+### LL
+
+* Extend the benchmark plan from the existing 2D five-point stencil case to include a 3D seven-point stencil case.
+* Prepare a structured experiment matrix covering problem size, dimensionality, total core count, MPI ranks, and OpenMP thread counts.
+* Implement or configure 1M, 5M, approximately 20M, and approximately 40M unknown cases where feasible.
+* Create Slurm scripts for the selected MPI-only and hybrid MPI+OpenMP configurations.
+* Run each selected configuration at least three times and record raw timing data.
+* Record convergence, residual norm, iteration count, PETSc options, and environment information for each run.
+* Use PETSc -log_view for representative cases and collect profiling data with Linaro MAP where feasible.
+* Compare MATAIJ / MATMPIAIJ with at least one or two alternative PETSc matrix representations.
+* Generate runtime, speedup, efficiency, and hybrid relative speedup plots.
+* Produce tables identifying best and worst rank-thread configurations.
+* Draft evidence-based practical recommendations for rank-thread choices.
+
+
+## Notes
+
+* The summer work should prioritise reproducibility and measurable evaluation criteria.
+* The 2D versus 3D comparison should be used to explain how communication pattern and stencil dimensionality affect performance.
+* Hybrid execution should be judged by practical benefit at fixed total core count, not only by whether it can run correctly.
+* Profiling evidence will be important for explaining why some configurations scale well and others do not.
+* If time becomes limited, the core comparison should remain 2D versus 3D, MPI-only versus hybrid, and baseline matrix format versus selected alternatives.
+
+## Date of Next Meeting (DONM)
+
+- TBD

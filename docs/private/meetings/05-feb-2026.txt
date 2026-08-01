@@ -1,0 +1,56 @@
+# MSc Meeting Minutes — 5-Feb-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Ongoing Actions
+
+* Initial benchmarking and setup for the PETSc OpenMP backend
+
+## Minutes
+
+### Technical Plan
+
+* The first project milestone will focus on **building and testing PETSc with the OpenMP backend enabled**.
+* Initial experimental workflow:
+
+  1. Build PETSc using the OpenMP backend.
+  2. Create or select a suitable matrix problem (initially simple and controlled).
+  3. Run experiments under different configurations:
+
+     * Vary number of nodes
+     * Vary MPI ranks and OpenMP threads
+  4. Measure execution time and compute **speedup** for comparison.
+* Emphasis is on validating correctness first, followed by initial performance trends.
+
+### Slurm / sbatch Configuration
+
+* Discussed best practices for **MPI + OpenMP hybrid job submission**.
+* Key points:
+
+  * Explicitly set `--cpus-per-task` and ensure it is propagated to `srun`.
+  * Configure OpenMP environment variables correctly:
+
+    * `OMP_NUM_THREADS`
+    * `OMP_PLACES=cores`
+  * Use thread pinning options (e.g. `--hint=nomultithread`) to avoid oversubscription.
+* A standard sbatch template will be used as a baseline for all experiments, with parameters adjusted systematically.
+
+## Actions
+
+### LL
+* Read the articles
+* Build PETSc with the OpenMP backend enabled.
+* Prepare a simple matrix-based test case for validation and benchmarking.
+* Finalise a reusable sbatch template for MPI+OpenMP experiments.
+* Run initial tests and collect timing and speedup data.
+
+### PB
+
+* Provide feedback on benchmark choice and experimental setup if needed.
+
+## Date of Next Meeting (DONM)
+
+* **Friday, 13-Feb-2026**

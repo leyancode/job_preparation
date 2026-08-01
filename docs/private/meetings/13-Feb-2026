@@ -1,0 +1,74 @@
+MSc Meeting Minutes — 13-Feb-2026
+Present
+
+Leyan Li (LL)
+
+Paul Bartholomew (PB)
+
+Ongoing Actions
+
+Initial scaling experiments for PETSc OpenMP backend
+
+Literature review on MPI+X models
+
+Minutes
+1. Scaling Study Plan
+
+Plan to conduct a structured strong scaling study.
+
+Target process counts:
+
+1, 2, 4, 8, 16, 32 (initial range)
+
+Vary:
+
+MPI ranks
+
+Total number of processes
+
+Begin with small-scale tests (up to 64 processes).
+
+Once stable and validated, extend experiments to larger scales (e.g., 128 processes).
+
+Repeat runs where necessary to ensure consistency and reliability of timing results.
+
+Once a concrete experimental design is drafted, share it with the supervisor for feedback before large-scale execution.
+
+2. Literature Review Direction
+
+Continue reading relevant papers.
+
+Focus on the term “MPI+X”, commonly used in HPC literature.
+
+“X” typically refers to:
+
+OpenMP
+
+CUDA
+
+HIP
+
+Other accelerator or threading models.
+
+
+3. Experimental Environment
+
+Run preliminary experiments on Cirrus to test configuration and workflow.
+
+Use these runs to validate:
+
+Job scripts
+
+Thread placement
+
+Runtime behaviour before larger-scale execution.
+
+4. Ethics Documentation
+
+Complete a draft of the ethics form.
+
+
+
+## Date of Next Meeting (DONM)
+
+* **Friday, 20-Feb-2026**

@@ -1,0 +1,44 @@
+\chapter{Multi-Node Scaling (2D and 3D)}
+\label{ch:multinode}
+% Prose = plain-English synthesis (05). Fuller draft: ../dissertation_prep/02_draft_ch4_ch5_results.md.
+
+\section{Experimental Setup Recap}
+\label{sec:mn-setup}
+The four layouts run at four sizes in 2D and 3D over the node counts admitted by the
+unknowns-per-core window: up to 8 nodes at 5.0M, 16 at 10.0M, 32 at 20.25M, and 64 at
+41.0M. All runs use CG+GAMG; iteration counts stay at 11--12 across sizes and node counts.
+
+\section{2D Results}
+\label{sec:2d}
+$32\times4$ had the lowest median runtime at every size and at almost every node count.
+For 41.0M unknowns it was faster than $128\times1$ by 11.3\% on one node
+($105.0\,\text{s}$ against $118.4\,\text{s}$), 11.7\% on 16 nodes, and 12.0\% on 64 nodes.
+$64\times2$ was a few percent behind $32\times4$.
+
+From one node to two, speedup was 0.93--0.99 for every layout and size. From two nodes on,
+each doubling gave speedups near 2.0 (2.00, 1.99, 2.00, 2.01 for $32\times4$ at 41.0M).
+Efficiency relative to one node settled at 45--48\%.
+
+At scale, $16\times8$ reached 33\% efficiency at 20.25M on 32 nodes ($32\times4$: 48\%) and
+18\% at 41.0M on 64 nodes, with runtime $9.19\,\text{s}$ against $4.03\,\text{s}$ for
+$32\times4$.
+% TODO(G4): log_view forensics, 1 node vs 2 nodes (VecScatter, PCSetUp), for the 1->2 step.
+
+\section{3D Results}
+\label{sec:3d}
+The layout order matched 2D ($32\times4$ fastest, $128\times1$ slowest of the four,
+$16\times8$ weakest at scale), with two differences. From one node to two, two nodes were
+faster than one (speedup 1.02--1.10); efficiency at two nodes was 51--55\% (2D: 47--49\%).
+The 3D seven-point stencil exchanges a larger halo relative to subdomain interior than the
+2D five-point stencil. At 41.0M on 64 nodes, $16\times8$ kept 35\% efficiency (2D: 18\%)
+and was 11\% slower than $32\times4$ (2D: 128\% slower).
+% TODO(G6): 3D 5.0M multi-node rows.
+
+\section{Cross-Dimension Comparison}
+\label{sec:crossdim}
+% TODO(G5): side-by-side 2D vs 3D efficiency plot + one paragraph
+% (same layout order across dimensions; 3D has no 1->2 step and milder 8-thread loss).
+
+\section{Interpretation}
+\label{sec:mn-interp}
+% TODO: NUMA / communication view; depends on G4 and the G3 profiling matrix.
