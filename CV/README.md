@@ -4,7 +4,7 @@
 
 ## 当前状态一句话
 
-**`agentCV_20260803` 可以投；`CV_hpc` 不能投**（有未实现声称和死链，见下）。投递日原定 2026-08-02，截至 8/3 尚未投出。
+**Agent、HPC 详细版和 HPC+AI Infra 一页版均已完成。** 旧 `CV_hpc` 只保留作修改前基线，不要投递。
 
 ## 目录里有什么
 
@@ -12,21 +12,30 @@
 |---|---|---|
 | `agentCV_20260803.docx` / `.pdf` | Agent / LLM 应用（主投） | ✅ **一页版，投递用这份** |
 | `agentCV_20260803_详细版.docx` / `.pdf` | 同上 | 三页，内容更全；面试前自己回读、或对方明确要长版时用 |
-| `CV_hpc.docx` / `.pdf` | 芯片生态 / HPC（副投） | ⚠️ **待修，见下方待办** |
+| `CV_hpc_ai_infra_20260803.docx` / `.pdf` | HPC + AI Infrastructure | ✅ **一页投递版**；性能平台、AI Infra、HPC 工具链与混合岗位 |
+| `CV_hpc_20260803_详细版.docx` / `.pdf` | HPC / 科学软件 / 性能工程 | ✅ **两页技术版**；技术筛选、内推和面试前材料 |
+| `CV_hpc.docx` / `.pdf` | 旧 HPC 草稿 | ❌ 有失效链接、未实现声称和 launcher-era 数字，只作基线 |
 | `backup/` | — | 历史版本，只读留档，不要从这里取文件投递 |
 
-**一页版与详细版的差别**（都只声称已实现的东西，一页版是详细版的子集，没有任何独有表述）：
+**Agent 一页版与详细版的差别**（都只声称已实现的东西，一页版是详细版的子集，没有任何独有表述）：
 
 - 项目一：8 条工作内容压成 4 条（分层架构与同构契约 / function calling 与防御式解析 / 评测与消融 / 工程化外围），砍掉的是规则 router 细节、字节级报告、工程纪律
 - 项目二：5 条压成 2 条，只留根因诊断与负结果自我批判
 - 技术能力：7 行并成 4 行；论文标题行内联
 - 排版：去掉 `docGrid` 行网格（11pt 段落原本被吸附到两个网格行，行距凭空翻倍——这一项零内容损失就省了一整页）；正文统一 9.5pt；上下页边距 0.4cm
 
-`CV_hpc` 没有挪进 `backup/`：它是该赛道**唯一**的版本，不是历史版本，只是内容过期。修好之前不要发出去。
+两份新 HPC 简历都不覆盖旧 `CV_hpc`。旧文件现在是可回溯的修改前基线，不应作为附件发送。
 
 ## 项目底稿的真实进度（简历口径的来源）
 
-两份简历声称的内容都必须能在这两个仓库里找到对应实现。
+简历声称的内容必须能在以下三个仓库中找到对应实现或实验记录。
+
+**hpc_benchmark_archer2**（github.com/leyancode/hpc_benchmark_archer2）
+
+- 正式实验：2D/3D、约 5M-165M unknowns、1-32 个 ARCHER2 节点，最多 4096 个物理核
+- 证据量：264 个 weak-scaling runs + 144 个 fixed-20M strong-scaling runs，共 **408 accepted formal runs**
+- 正式结论：2D `64x2` 在 11 个 weak-scaling 点赢 8 个；165M/32 节点约 794.8M equations/s；3D 最大 throughput gain 33.2%
+- MAP 数字来自 instrumented runs，只解释 MPI exposure 与 OpenMP waiting 的排序，不与非插桩 timing 混用
 
 **hpc-benchmark-agent**（github.com/leyancode/hpc-benchmark-agent）
 
@@ -68,12 +77,13 @@
 - 负结果与自我批判：non-monotonic mixer 梯度爆炸如实写进论文；三个 learner 其实都只产出共享标量 advantage，收益来自表示与梯度路径而非真正的 per-agent credit assignment
 - 2026 作品集化的工程动作
 
-## CV_hpc 待办（投这条赛道前必须做完）
+## 2026-08-03 这次改了什么（HPC 简历）
 
-1. **第二个项目整段是未实现声称** —— "AI Agent 智能性能分析系统"那段写了 Redis 缓存与 TTL、FAISS / Chroma 向量索引、LangChain / LlamaIndex、MySQL 查询优化、Docker、健康检查接口、缓存命中追踪、图表生成工具、Obsidian 报告，**一个都没实现**。且它与 agentCV 描述的是同一个项目，两份投到同一家公司会自相矛盾
-2. **GitHub 链接两处仍是 `lionleepower`**（页头 + 项目链接）—— 仓库已迁至 `leyancode`，旧链接靠改名跳转硬撑，旧用户名一旦被人注册即失效
-3. **教育背景仍是 `2025.09 – 2026.09 预计`** —— 按 agentCV 的口径改成 2026.12 + 可入职时间
-4. **petsc 项目规模被严重低估** —— 现写"实验核心数覆盖至 128 cores"，而仓库 README 的真实数据是 **64 节点 / 8,192 核**、最大 40.96M unknowns、**26.1x 强扩展加速**，且各规模下最快布局都是 `32 ranks × 4 threads`。最硬的数字被写没了
+- 新增两页 HPC / 科学软件详细版和一页 HPC+AI Infrastructure 投递版；两份都通过 Microsoft Word PDF 导出和逐页视觉检查
+- 项目链接统一为 `leyancode/hpc_benchmark_archer2`，教育日期和可入职时间与 Agent 简历一致
+- 第二个项目改为已经实现的 Agent 系统；删除 Redis、FAISS/Chroma、LangChain/LlamaIndex、MySQL 优化和 Docker 健康检查等未实现声称
+- HPC 数字改用经过审计的 Phase 3 正式结果；旧的 64 节点、8192 核、26.1x 和“`32x4` 始终最优”来自 launcher-era 数据，已被 process-count 审计推翻，禁止恢复
+- 增加 `302/303` launcher 失配、408 个 accepted formal runs、weak/strong scaling 和 MAP instrumented-run 边界，突出实验纠错与证据管理能力
 
 ## 关键事实口径（两份简历必须一致）
 
@@ -97,4 +107,4 @@
 - [ ] 简历声称的每个模块都能在仓库里指出对应实现 —— **不声称未实现的模块**是硬约束
 - [ ] 毕业时间与可入职时间两个都在，缺一不可
 - [ ] demo 三分钟可复现：clone → `pytest`（229 passed）→ `ask` → `report`
-- [ ] 另存为新文件名，不覆盖上一版；上一版移入 `backup/`
+- [ ] 使用带日期的新文件名，不覆盖或误发旧 `CV_hpc` 基线
