@@ -1,0 +1,67 @@
+\contentsline {chapter}{Abstract}{i}{chapter*.1}%
+\contentsline {chapter}{Acknowledgements}{ii}{chapter*.2}%
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Motivation}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Aims and Research Questions}{1}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Contributions}{2}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Dissertation Structure}{3}{section.1.4}%
+\contentsline {chapter}{\numberline {2}Background and Related Work}{4}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Parallel Programming Models}{4}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Limitations of Flat MPI}{5}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Hybrid MPI+OpenMP}{6}{section.2.3}%
+\contentsline {section}{\numberline {2.4}ARCHER2 Node Architecture and NUMA}{6}{section.2.4}%
+\contentsline {section}{\numberline {2.5}PETSc and Krylov Solvers}{8}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Performance Analysis Tools}{9}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Summary and Research Gap}{9}{section.2.7}%
+\contentsline {chapter}{\numberline {3}Experimental Platform and Methodology}{10}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Hardware and Software Environment}{10}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Benchmark Problems and Drivers}{10}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Solver Configuration}{11}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Configuration Space and Selection Rules}{12}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Bounding the Thread Count}{12}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Exploratory Single-Node Sweep}{12}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}The Same Bound on the Production Configuration}{14}{subsection.3.5.2}%
+\contentsline {section}{\numberline {3.6}Job Configuration and Thread Placement}{15}{section.3.6}%
+\contentsline {section}{\numberline {3.7}Metrics}{15}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Superseded Campaigns}{15}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Reproducibility}{17}{section.3.9}%
+\contentsline {chapter}{\numberline {4}2D and 3D Problems}{18}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Experimental Setup}{18}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Weak-Scaling Chains}{19}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Strong-Scaling Design}{19}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}Weak Scaling at Constant Work per Core}{19}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}2D}{20}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}3D}{21}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Layout Ranking and Efficiency}{22}{subsection.4.2.3}%
+\contentsline {section}{\numberline {4.3}Strong Scaling at Fixed Problem Size}{24}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}2D}{24}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}3D}{25}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Endpoints}{27}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}Interpretation}{27}{section.4.4}%
+\contentsline {chapter}{\numberline {5}Profiling and Bottleneck Analysis}{29}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Why a Repeated-Solve Driver}{29}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Analysis Methodology}{29}{section.5.2}%
+\contentsline {section}{\numberline {5.3}MAP Profiling Matrix Results}{29}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Bottleneck Identification}{31}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}What is Measured}{31}{subsection.5.4.1}%
+\contentsline {subsection}{\numberline {5.4.2}Halo Exchange Dominates, and Hybridisation Reduces It}{32}{subsection.5.4.2}%
+\contentsline {subsection}{\numberline {5.4.3}Reduced Exposure is Necessary but not Sufficient}{33}{subsection.5.4.3}%
+\contentsline {subsection}{\numberline {5.4.4}What This Does and Does Not Establish}{35}{subsection.5.4.4}%
+\contentsline {chapter}{\numberline {6}Discussion}{36}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Answering the Research Questions}{36}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}RQ1: Does the threaded backend reduce time to solution, and by how much?}{36}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}RQ2: At which balance, and how does the answer change with the regime?}{36}{subsection.6.1.2}%
+\contentsline {subsection}{\numberline {6.1.3}RQ3: Which parts of the solve account for the difference?}{37}{subsection.6.1.3}%
+\contentsline {subsection}{\numberline {6.1.4}RQ4: How far do the trends generalise, and what would establish a mechanism?}{37}{subsection.6.1.4}%
+\contentsline {section}{\numberline {6.2}Threats to Validity}{38}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Practical Guidance for PETSc on ARCHER2}{38}{section.6.3}%
+\contentsline {chapter}{\numberline {7}Conclusion and Future Work}{40}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Conclusions}{40}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Future Work}{41}{section.7.2}%
+\contentsline {chapter}{Bibliography}{42}{chapter*.6}%
+\contentsline {chapter}{\numberline {A}Reproducibility: Repository and Scripts}{43}{appendix.A}%
+\contentsline {section}{\numberline {A.1}Layout}{43}{section.A.1}%
+\contentsline {section}{\numberline {A.2}Evidence Index}{44}{section.A.2}%
+\contentsline {section}{\numberline {A.3}Regenerating the results}{45}{section.A.3}%
+\contentsline {chapter}{\numberline {B}Supplementary Figures}{47}{appendix.B}%
+\contentsline {chapter}{\numberline {C}Full log\_view Excerpts}{49}{appendix.C}%
