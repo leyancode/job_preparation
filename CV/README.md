@@ -4,8 +4,9 @@
 
 ## 当前状态一句话
 
-**四份都可以投**：`agentCV_20260803`（Agent / LLM 应用）+ 8/4 新增的三个岗位变体（性能优化 / AI 平台 / HPC）。
-旧的 `CV_hpc.docx` 已作废并移入 `backup/`（未实现声称 + 死链），**不要再从那里取**。
+**可投的有五份**：`agentCV_20260803`（Agent / LLM 应用）、8/3 做的两份 HPC+AI Infra、8/4 做的三个岗位变体。
+旧 `CV_hpc.docx` 已作废并移入 `backup/`（未实现声称 + 死链），**不要再从那里取**。
+⚠️ 8/3 与 8/4 两批是**在两台机器上各做一遍的重复工作**，投递前先按下方「两批怎么选」定下来。
 投递日原定 2026-08-02，截至 8/4 尚未投出。
 
 ## 目录里有什么
@@ -14,30 +15,47 @@
 |---|---|---|
 | `agentCV_20260803.docx` / `.pdf` | Agent / LLM 应用 | ✅ **一页版，投递用这份** |
 | `agentCV_20260803_详细版.docx` / `.pdf` | 同上 | 三页，内容更全；面试前自己回读、或对方明确要长版时用 |
-| `CV_perf_20260804.docx` / `.pdf` | AI 训练 / 推理性能优化、分布式性能工程 | ✅ 两页 |
-| `CV_aiplatform_20260804.docx` / `.pdf` | AI 平台 / 基础设施 / 作业调度 | ✅ 两页 |
-| `CV_hpc_20260804.docx` / `.pdf` | HPC / 科学计算 / 芯片生态 | ✅ 两页 |
-| `build_cv.py` | — | **三个变体的唯一生成器**，见下 |
+| `CV_hpc_ai_infra_20260803.docx` / `.pdf` | HPC + AI Infrastructure（8/3 版） | ✅ **一页**，Word 导出并逐页目视检查过 |
+| `CV_hpc_20260803_详细版.docx` / `.pdf` | HPC / 科学软件 / 性能工程（8/3 版） | ✅ 两页技术版 |
+| `CV_perf_20260804.docx` / `.pdf` | AI 训练 / 推理性能优化（8/4 版） | ✅ 两页 |
+| `CV_aiplatform_20260804.docx` / `.pdf` | AI 平台 / 基础设施 / 调度（8/4 版） | ✅ 两页 |
+| `CV_hpc_20260804.docx` / `.pdf` | HPC / 科学计算 / 芯片生态（8/4 版） | ✅ 两页 |
+| `build_cv.py` | — | **8/4 三个变体的唯一生成器**，见下 |
 | `backup/` | — | 历史版本，只读留档，不要从这里取文件投递 |
+
+### ⚠️ 两批怎么选（8/3 vs 8/4）
+
+两批是独立做出来的，**事实口径一致**（都用 408 runs / 302-303 / 29.83× / MAP 占比），不存在互相矛盾，只是重复。差别：
+
+| | 8/3 版 | 8/4 版（`build_cv.py`） |
+|---|---|---|
+| 篇幅 | 一页 + 两页详细版 | 三份各两页 |
+| 邮箱 | QQ | gmail |
+| 个人主页 | 无 | 有，邮箱 / GitHub / 主页均为可点击外链 |
+| MARL 项目 | 无 | 有（2 条） |
+| 岗位适配 | 一份通吃 | 按 perf / platform / hpc 三个方向分别排布技能与 bullet |
+| 维护方式 | 手改 docx | 改脚本重新生成，事实只写一遍 |
+
+**建议**：留 8/4 三份作为投递主力（可按岗位挑），把 8/3 的一页版留着当「对方明确要一页」时的备份；两批都不要删，但**同一家公司只投其中一份**。
 
 ### 三个岗位变体怎么维护（`build_cv.py`）
 
-三份不是三个独立文档，而是**同一套事实底稿的三种排布**，由 `build_cv.py` 生成：
+8/4 的三份不是三个独立文档，而是**同一套事实底稿的三种排布**：
 
 ```bash
 python3 build_cv.py
 soffice --headless --convert-to pdf CV_perf_*.docx CV_aiplatform_*.docx CV_hpc_*.docx --outdir .
 ```
 
-- 排版直接复用 `agentCV_20260803.docx` 的 package（styles / numbering / sectPr），只换 `word/document.xml`，所以三份和 agentCV 视觉完全一致
-- **事实只写一遍**：技能条目在 `SKILL`、项目一 bullet 在 `P1`、项目二在 `P2`、项目三在 `P3`。改一个数字，三份同时生效——这是防事实漂移的唯一手段，**不要直接编辑 docx**
-- 变体之间的差别只在 `VARIANTS`：技能段顺序、bullet 取舍、项目一标题、顶部求职方向行
+- 排版直接复用 `agentCV_20260803.docx` 的 package（styles / numbering / sectPr），只换 `word/document.xml`
+- **事实只写一遍**：技能条目在 `SKILL`、项目一 bullet 在 `P1`、项目二在 `P2`、项目三在 `P3`。改一个数字，三份同时生效——**不要直接编辑 docx**
+- 变体差别只在 `VARIANTS`：技能段顺序、bullet 取舍、项目一标题
   - `perf`：技能以并行/剖析/深度学习打头，项目一先给 scaling 结论和 MAP 机理，再给审计
   - `platform`：技能以工程/调度/服务化打头，项目一先给设计与审计管线，性能结论压成一条摘要
-  - `hpc`：技能含数值方法与求解器，项目一八条全给（含「局限如实标注」），不写求职方向行
-- 顶部的「求职方向：」一行只在 `perf` / `platform` 有（跨赛道投需要给 HR 一个路由信号）；不想要就把 `VARIANTS[...]["tagline"]` 设成 `None`
+  - `hpc`：技能含数值方法与求解器，项目一八条全给（含「局限如实标注」）
+- ⚠️ **本机没装 Tahoma**，LibreOffice 导出的 PDF 字距与分页不等于 Word。**投递前从 Word 重新导出并确认页数**
 
-**一页版与详细版的差别**（都只声称已实现的东西，一页版是详细版的子集，没有任何独有表述）：
+**Agent 一页版与详细版的差别**（都只声称已实现的东西，一页版是详细版的子集，没有任何独有表述）：
 
 - 项目一：8 条工作内容压成 6 条（分层架构与同构契约 / 中文规则 router / 确定性工具与字节级报告 / function calling 与防御式解析 / 评测与消融 / 工程化外围），只砍掉工程纪律那条
 - 项目二：5 条压成 2 条，只留根因诊断与负结果自我批判
@@ -58,9 +76,10 @@ soffice --headless --convert-to pdf CV_perf_*.docx CV_aiplatform_*.docx CV_hpc_*
 
 - ARCHER2 上 PETSc hybrid MPI+OpenMP 布局对照，2D/3D、5M–165M unknowns、**最多 32 节点 / 4,096 核**
 - 正式结论只用 **408 个通过内容审计的 run**（264 weak-scaling + 144 fixed-size strong-scaling）
-- 头条数：2D weak `64×2` 165M/32 节点 **794.8M eq/s（+13.1%）**；3D weak `32×4` 最大 **+33.2%**；
+- 头条数：2D weak `64×2` 在 11 个点赢 8 个、165M/32 节点 **794.8M eq/s（+13.1%）**；3D weak `32×4` 最大 **+33.2%**；
   2D fixed-20M `64×2` **0.0277 s/solve、29.83×、93.2%**；3D fixed-20M `16×8` **0.0681 s/solve、14.24×**，比 flat MPI 快 3.81×
 - 方法论卖点：Phase 2 的 **302 / 303** 份日志 process count 与文件名失配 → 整阶段性能曲线作废；MAP 占比 MPI 46.7%→6.2%、OpenMP 等待 48.3%→76.5%
+- MAP 数字来自 instrumented runs，**只解释布局之间的排序，不与未插桩 timing 混用**
 - CI：GitHub Actions 跑公开数据 pytest + fake Slurm 执行提交脚本
 
 **hpc-benchmark-agent**（github.com/leyancode/hpc-benchmark-agent）
@@ -102,6 +121,14 @@ soffice --headless --convert-to pdf CV_perf_*.docx CV_aiplatform_*.docx CV_hpc_*
 - 根因诊断：QMIX 的 TD 目标沿用 `max_a Qᵢ` 而 actor 是 on-policy，td_error 不是合法 advantage 而是系统性偏乐观
 - 负结果与自我批判：non-monotonic mixer 梯度爆炸如实写进论文；三个 learner 其实都只产出共享标量 advantage，收益来自表示与梯度路径而非真正的 per-agent credit assignment
 - 2026 作品集化的工程动作
+
+## 2026-08-03 这次改了什么（HPC 简历，另一台机器）
+
+- 新增两页 HPC / 科学软件详细版和一页 HPC+AI Infrastructure 投递版；两份都通过 Microsoft Word PDF 导出和逐页视觉检查
+- 项目链接统一为 `leyancode/hpc_benchmark_archer2`，教育日期和可入职时间与 Agent 简历一致
+- 第二个项目改为已经实现的 Agent 系统；删除 Redis、FAISS/Chroma、LangChain/LlamaIndex、MySQL 优化和 Docker 健康检查等未实现声称
+- HPC 数字改用经过审计的 Phase 3 正式结果；旧的 64 节点、8192 核、26.1x 和「`32x4` 始终最优」来自 launcher-era 数据，已被 process-count 审计推翻，**禁止恢复**
+- 增加 `302/303` launcher 失配、408 个 accepted formal runs、weak/strong scaling 和 MAP instrumented-run 边界
 
 ## 2026-08-04 这次做了什么（三个岗位变体）
 
@@ -149,5 +176,7 @@ soffice --headless --convert-to pdf CV_perf_*.docx CV_aiplatform_*.docx CV_hpc_*
 - [ ] 毕业时间与可入职时间两个都在，缺一不可
 - [ ] demo 三分钟可复现：clone → `pytest`（229 passed）→ `ask` → `report`
 - [ ] 另存为新文件名，不覆盖上一版；上一版移入 `backup/`
-- [ ] 三个变体：**改事实改 `build_cv.py` 再重新生成，不要手改 docx**（手改会让三份漂移）
-- [ ] 同一家公司只投一份 —— agentCV 与三个变体的项目二是同一个仓库，两份一起投等于自曝口径差异
+- [ ] 8/4 三个变体：**改事实改 `build_cv.py` 再重新生成，不要手改 docx**（手改会让三份漂移）
+- [ ] **从 Word 导出 PDF 并确认页数**——本机无 Tahoma，LibreOffice 的分页不作数
+- [ ] 同一家公司只投一份 —— 所有简历的 Agent 项目都是同一个仓库，多份一起投等于自曝口径差异
+- [ ] 8/3 与 8/4 两批不要同时发给同一个人
