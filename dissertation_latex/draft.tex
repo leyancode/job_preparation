@@ -487,7 +487,8 @@ to NUMA placement. This mapping is a plausible mechanism for layout differences,
 of their cause. The experiments fix thread affinity and compare measurements before using
 topology to interpret the ordering. \Cref{sec:map-matrix} returns to it with profiler
 evidence and finds that the cost which distinguishes $16\times8$ is paid in the OpenMP
-runtime rather than at either memory boundary.
+runtime rather than at either memory boundary, which locates the cost without settling what
+makes the threads wait.
 
 \section{PETSc and Krylov Solvers}
 \label{sec:petsc-krylov}
@@ -1859,7 +1860,8 @@ reductions.
 \label{sec:map-matrix}
 Two MAP campaigns profiled the same 20.25M 2D problem: a baseline set on
 \texttt{arch-omp-opt} at 2, 8, and 16 nodes, and a matching set on the production
-\texttt{arch-omp-libsci-rome-opt} build at 2 and 8 nodes. Neither contains a $128\times1$
+\texttt{arch-omp-libsci-rome-opt} build at 2 and 8 nodes. Neither 
+contains a $128\times1$
 cell, because MAP cannot launch 128 MPI ranks per node on this system. Flat MPI therefore
 has \texttt{-log\_view} evidence only. Of the twelve profiles, eleven are used here. The
 16-node $16\times8$ baseline profile is rejected on its own content: MAP resolved no
@@ -1939,21 +1941,36 @@ common cells the MPI shares differ by at most 0.9 percentage points and the Open
 by at most 4.3, with no systematic sign. This is a property of the layout, not of the
 linked library.
 
-Three limits apply. MAP's overhead is large and uneven (separately measured at $+35\%$
-on the timed stage and roughly threefold on \texttt{VecScatterEnd}), and its OpenMP
+Three limits apply. MAP's overhead is large and uneven  (separately measured at $+35\%$
+on the timed stage and roughly threefold on \texttt{VecScatterEnd}),and its OpenMP
 instrumentation perturbs exactly the barrier behaviour being measured, so the absolute
 percentages overstate what an uninstrumented run would show. There is one profile per
 cell, so there is no observed range. And with no $128\times1$ profile the trend is
 anchored only at its hybrid end, though flat MPI has no OpenMP runtime time at all by
 construction, which fixes the missing point at zero.
 
-Within those limits the table answers the question \Cref{ch:multinode} left open. The
-cost that grows with threads per rank, and that must be repaid before hybridisation
-helps, is idle time in the OpenMP runtime, not NUMA placement and not L3 capacity. It has
-the right shape: it is monotone in the thread count, it grows with node count as the work
-per threaded region shrinks, and it is largest exactly where $16\times8$ performs worst.
-\Cref{sec:bottleneck} shows the other half of the trade, on the full matrix and without a
-profiler.
+Within those limits the table answers the question \Cref{ch:multinode} left open, at the
+level of accounting rather than of mechanism. The cost that grows with threads per rank,
+and that must be repaid before hybridisation helps, is paid as idle time in the OpenMP
+runtime: the term that grows is time in \texttt{cpu\_relax}, \texttt{do\_spin} and
+\texttt{\_\_futex\_wait}, not time in the compute kernels. NUMA placement is excluded on
+topology alone: a rank of eight threads crosses a shared-L3 boundary but still fits inside
+one 16-core NUMA region, so no layout of this study places a rank across two NUMA regions
+and the four cannot differ in that respect (\Cref{tab:layouts}). 
+
+Neither is the growth a placement effect, because it is present at fixed layout, 
+where a rank's threads occupy the same cores against the same shared-L3 boundary at every node count: 
+holding $16\times8$ and going from two nodes to eight raises the waiting share from 53.5\% to
+76.5\% on the LibSci build and from 57.8\% to 77.5\% on the baseline, as the work per
+threaded region shrinks. 
+
+That is the discriminating observation. The other two features of
+the shape, monotonicity in the thread count and a maximum exactly where $16\times8$
+performs worst, are consistent with this reading but equally consistent with a cache one.
+What the profiles do not settle is why the threads wait: a rank spanning two CCXs could
+produce imbalance that is collected at the same barrier, and \Cref{sec:sync-limits} leaves
+that to the hardware-counter work of \Cref{sec:futurework}. \Cref{sec:bottleneck} shows
+the other half of the trade, on the full matrix and without a profiler.
 
 A fourth observation is negative and worth recording. Threaded LibSci is linked into the
 production build and PETSc's sparse solve path barely calls it: BLAS accounts for at most
@@ -2211,9 +2228,10 @@ The second half of that trade is measured too, on eleven Linaro MAP profiles of 
 2D problem. Within the solve window the share of core-time spent waiting in the OpenMP
 runtime rises with threads per rank (48.3\%, 69.3\% and 76.5\% at eight nodes) while the
 MPI share falls (46.7\%, 22.6\% and 6.2\%). Both orderings reproduce across two different
-PETSc builds. This names the cost that repays hybridisation as OpenMP idle time rather than
-NUMA placement or L3 capacity, and it explains why $16\times8$ removes the most exposure
-in 2D and is still the slowest layout at every point.
+PETSc builds. This locates the cost that hybridisation must repay in the OpenMP runtime
+rather than at a memory boundary, and it explains why $16\times8$ removes the most exposure
+in 2D and is still the slowest layout at every point. Where the cost is paid is not why it
+is paid; \Cref{sec:rq4} takes that up.
 
 \subsection{RQ4: How far do the trends generalise, and what would establish a mechanism?}
 \label{sec:rq4}
