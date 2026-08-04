@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------- LaTeX
+# 每次 latexmk 都会重写这些文件，跟踪它们的唯一效果是：
+# 换台机器 git pull 必然冲突。全部由 .tex 重新生成，不需要入库。
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.nav
+*.snm
+*.vrb
+*.idx
+*.ilg
+*.ind
+*.figlist
+*.makefile
+*.figlist-*
+*.auxlock
+
+# 编译出的 PDF 仍然入库 —— 换台机器能直接读到最新稿，值得那点二进制 churn。
+# 如果哪天嫌 PDF 冲突烦，取消下面两行的注释，再 git rm --cached 一次即可。
+# dissertation_latex/draft.pdf
+# dissertation_latex/main.pdf
+
+# ---------------------------------------------------------------- Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------- 环境与编辑器
+.env
+.env.*
+.DS_Store
+*.swp
+*~
