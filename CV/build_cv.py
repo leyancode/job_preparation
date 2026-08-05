@@ -6,6 +6,8 @@
   perf      训练 / 推理性能优化、分布式性能工程
   platform  AI 平台 / 基础设施 / 调度
   hpc       HPC / 科学计算 / 芯片生态
+  ai_infra  AI Infra（对标 ref/ai_infra 那份进面简历的排布：关联课业段、关键词式
+            技能段、技术栈内联进标题、bullet 压到两行内且数字前置）
 
 排版沿用 agentCV_20260803.docx 的 package（styles / numbering / sectPr 全部复用），
 只替换 word/document.xml。改事实只改本文件顶部的 FACT 区，三份同时生效。
@@ -18,8 +20,9 @@ import zipfile, re, os
 from xml.sax.saxutils import escape
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(HERE, "agentCV_20260803.docx")   # 只借排版，不借内容
-DATE = "20260804"
+CN = os.path.join(HERE, "国内投递")                  # 中文简历的输出目录
+SRC = os.path.join(CN, "agentCV_20260803.docx")     # 只借排版，不借内容
+DATE = "20260805"
 
 # ============================================================ 排版原语
 RF = '<w:rFonts w:ascii="Tahoma" w:hAnsi="Tahoma" w:cs="Tahoma"/>'
@@ -85,6 +88,11 @@ EDU_BSC = [("利物浦大学 University of Liverpool 英国 | 2023.09 – 2025.0
 PAPER = ("论文发表：", "Li, Leyan. Convolutional Neural Networks Based Medical Image Analysis. "
          "International Conference on Engineering Management, Information Technology and Intelligence, EMITI 2024.")
 
+# 关联课业：写主题名而非课程代码，逐项须能在成绩单上找到对应课。
+# ⚠️ 投递前按成绩单核对一遍；没修过的直接删，不要为了关键词留着。
+COURSES = ("关联课业：", "消息传递并行编程（MPI）、线程并行编程（OpenMP）、HPC 体系结构、"
+           "性能编程与优化、GPU / 加速器编程、并行设计模式、高性能数据分析、机器学习")
+
 # ---------------- 技能条目 ----------------
 SKILL = {
 "parallel": ("并行与分布式性能工程：",
@@ -124,12 +132,66 @@ SKILL = {
     "以及把关键数值锁进测试以防图表与结论漂移。"),
 }
 
+# ---------------- 技能条目：关键词式（ai_infra 变体用） ----------------
+# 参考简历的技能段是 5 行纯列表，一眼扫得完；上面的 SKILL 是散文段，每条 3–4 行。
+# 这里改成「工具关键词打头 + 一句能力边界」，行数减半而关键词密度更高。
+# 规则不变：技能段只写项目段证明不了的东西，做过的事交给项目 bullet 用细节证明。
+SKILL_KW = {
+"lang": ("编程语言：", "C / C++、Python、Bash、SQL"),
+
+"parallel": ("并行与分布式：",
+    "MPI、OpenMP、hybrid MPI+OpenMP、PETSc、Slurm、numactl / hwloc / lscpu；"
+    "strong / weak scaling、parallel efficiency 与饱和点判定；"
+    "halo exchange、CG global reduction（allreduce）等集合通信开销与 surface-to-volume ratio 对通信暴露的影响"),
+
+"profiling": ("性能剖析与体系结构：",
+    "Linaro MAP call-tree profiling、STREAM 内存带宽基线、roofline / 访存墙估算；"
+    "把开销拆成计算、通信、同步等待三类分别归因；"
+    "从 NUMA / CCX / 共享 L3、memory bandwidth、线程绑定（OMP_PLACES、OMP_PROC_BIND）与负载均衡角度解释瓶颈"),
+
+"dl": ("深度学习与大模型：",
+    "PyTorch、NumPy、pandas、Matplotlib；实现过多智能体 actor-critic 训练流程并诊断过训练不收敛的根因；"
+    "LLM function calling / tool schema 设计、离线评测集构建与消融实验"),
+
+# 「（课程与自学）」这个限定必须留着：它是这段唯一没有项目 bullet 背书的技能，
+# 不标层级就是超范围声称。但也不必写成「尚无生产经验」——那是在简历上自我淘汰。
+"gpu": ("GPU 与推理服务（课程与自学）：",
+    "CUDA 编程模型与 GPU 存储层次、NCCL 集合通信、数据并行 / 张量并行；"
+    "推理服务的 batching 与吞吐-时延取舍、KV cache 与量化档位对每 token 访存量的影响"),
+
+"eng": ("工程与工具链：",
+    "Linux、Git、pytest、GitHub Actions CI、FastAPI + Pydantic、SQLite / MySQL，了解 Docker；"
+    "习惯把实验做成可复现管线：参数化提交脚本 → 基于内容的日志审计 → pandas 聚合 → 图表与回归测试"),
+}
+
+# ---------------- 技能条目：一页版（四行） ----------------
+# 一页纸放不下六行技能。合并原则：把「并行 + 剖析」并成一条、「深度学习 + GPU」并成一条，
+# GPU 的「课程与自学」限定必须跟着走——它是全篇唯一没有项目 bullet 背书的技能。
+SKILL_1P = {
+"lang": ("编程语言：", "C / C++、Python、Bash、SQL"),
+
+"hpc": ("并行与性能工程：",
+    "MPI、OpenMP、hybrid MPI+OpenMP、PETSc、Slurm、numactl / hwloc、Linaro MAP；"
+    "strong / weak scaling、parallel efficiency 与饱和点判定，halo exchange、global reduction（allreduce）等集合通信开销，"
+    "roofline / 访存墙估算，NUMA 与线程绑定"),
+
+"ml": ("深度学习与大模型：",
+    "PyTorch、NumPy、pandas；LLM function calling / tool schema 设计、离线评测集构建与消融实验。"
+    "GPU 与推理服务为课程与自学层面：CUDA 编程模型、NCCL 集合通信、数据 / 张量并行、"
+    "batching 与吞吐-时延取舍、KV cache 与量化对每 token 访存量的影响"),
+
+"eng": ("工程与工具链：",
+    "Linux、Git、pytest、GitHub Actions CI、FastAPI + Pydantic、SQLite / MySQL，了解 Docker；"
+    "把实验做成可复现管线：参数化提交脚本 → 基于内容的日志审计 → pandas 聚合 → 回归测试"),
+}
+
 # ---------------- 项目一：ARCHER2 ----------------
 P1_LINK = "  github.com/leyancode/hpc_benchmark_archer2"
 P1_TITLE = {
 "perf":     "项目经历：ARCHER2 上 4,096 核规模的 hybrid MPI+OpenMP 布局对照实验——通信暴露与线程空转的权衡",
 "platform": "项目经历：ARCHER2 上 4,096 核规模的可审计 benchmark 实验管线（408 runs）",
 "hpc":      "项目经历：ARCHER2 上 PETSc hybrid MPI+OpenMP 布局的可审计性能实验（32 节点 / 4,096 核）",
+"ai_infra": "ARCHER2 上 4,096 核规模的并行布局选型与性能归因——通信暴露与线程空转的权衡",
 }
 P1_DESC = ("项目描述：",
     "在英国国家超算 ARCHER2（HPE Cray EX，双路 AMD EPYC 7742、128 核/节点，Slingshot 互连）上研究一个受约束的配置问题："
@@ -138,6 +200,29 @@ P1_DESC = ("项目描述：",
     "正式结论只使用 408 个通过内容审计的 run（264 weak-scaling + 144 fixed-size strong-scaling）。")
 P1_STACK = ("技术栈：",
     "C、PETSc、MPI、OpenMP、Slurm、Bash、Python、pandas、Matplotlib、Linaro MAP、GitHub Actions、Linux")
+
+# 内联进标题行的短技术栈（ai_infra 变体用，每个项目省一整行）
+P1_STACK_INLINE = "C · PETSc · MPI · OpenMP · Slurm · Linaro MAP · Python / pandas · GitHub Actions"
+P2_STACK_INLINE = "Python · SQLite · FastAPI · Pydantic · OpenAI SDK（function calling）· pytest"
+P3_STACK_INLINE = "Python · PyTorch · PyMARL · MAPPO · VDN · QMIX · CTDE · PPO · PettingZoo / MPE2"
+
+# ai_infra 变体的项目描述：比通用版短一截，把行数让给带数字的 bullet
+P1_DESC_SHORT = ("项目描述：",
+    "在英国国家超算 ARCHER2（HPE Cray EX，双路 AMD EPYC 7742、128 核/节点，Slingshot 互连）上研究一个受约束的配置问题："
+    "总核数固定时，减少 MPI rank 数、增大每 rank 的 OpenMP 线程数，能否用省下的通信与进程开销抵消线程组创建、barrier 与空转成本。"
+    "负载为 2D/3D stencil + CG+GAMG，5M–165M unknowns，比较四种满节点布局；正式结论只用 408 个通过内容审计的 run。")
+
+# 一页版的项目描述：只交代问题是什么，结论一律留给 bullet
+P1_DESC_1P = ("项目描述：",
+    "在英国国家超算 ARCHER2（双路 AMD EPYC 7742、128 核/节点，Slingshot 互连）上研究一个受约束的配置问题："
+    "总核数固定时，如何在 MPI rank 数与每 rank 的 OpenMP 线程数之间切分。"
+    "负载为 2D/3D stencil + CG+GAMG，5M–165M unknowns，四种满节点布局（128×1 / 64×2 / 32×4 / 16×8）。")
+P2_DESC_1P = ("项目描述：",
+    "把上一项目的 PETSc benchmark 数据结构化为 SQLite，性能分析任务封装为确定性工具："
+    "让 LLM 只负责「选哪个工具、参数是什么」，数值一律由确定性代码算，从而让 Agent 的正确性变成可评测量。")
+P3_DESC_1P = ("项目描述：",
+    "在 MAPPO 的 critic 上分别接入 VDN 加性分解与 QMIX 单调 mixing 做单变量对照——"
+    "三个变体共用同一套 runner / buffer / shared RNN actor 与全部 PPO 超参，差异只在 critic 分支。")
 
 P1 = {
 "design": ("实验设计：",
@@ -182,6 +267,49 @@ P1 = {
 "limits": ("局限如实标注：",
     "3 次重复的误差线是观测 min–max 而非置信区间；结论绑定给定 stencil / solver / PETSc build / placement policy，"
     "不代表所有 PETSc 应用都有相同最佳布局；样本中可重复观察到的 superlinear speedup 未能确定硬件原因，写为未解释项而非卖点。"),
+
+# ---- ai_infra 压缩版：数字前置、每条控制在两行内 ----
+"c_layout": ("布局选型结论：",
+    "固定总核数扫描 128×1 / 64×2 / 32×4 / 16×8 四种满节点布局。2D weak scaling 上 64×2 在 11 个 size/node 点赢 8 个"
+    "（165M unknowns / 32 节点 794.8M equations/s，比 flat MPI 高 13.1%），3D 上 32×4 最大增益 33.2%；"
+    "fixed-20M strong scaling 上 2D 最快为 64×2（0.0277 s/solve、29.83× 加速、93.2% 累积效率），3D 最快为 16×8（比 flat MPI 快 3.81×）。"
+    "最佳并行度随维度与规模改变，不存在单一「最优线程数」。"),
+
+"c_map": ("Profiling 归因：",
+    "Linaro MAP call tree 显示 threads/rank 上升时，solve window 内 MPI 占比从 46.7% 降到 6.2%、OpenMP runtime 等待从 48.3% 升到 76.5%——"
+    "布局排序即「通信暴露」与「线程空转」两条曲线的交点；同时排除 threaded BLAS 的解释（LibSci ≤ 2.1% solve-window core-time）。"
+    "因插桩会不均匀扰动运行时间，只读布局之间的占比排序，绝不与未插桩的 scaling timing 混用。"),
+
+"c_saturate": ("饱和点与收益递减：",
+    "各布局饱和点不同——128×1 在 8 节点后变慢，64×2 与 32×4 在 16 节点后变慢，16×8 到 32 节点仍在下降："
+    "每个计算单元的工作量降到一定程度后，更粗的进程粒度才开始有回报。"
+    "这与固定 batch 继续扩机器时的收益递减、以及并行切分粒度的选型是同一类问题。"),
+
+"c_retract": ("主动作废不可信结果：",
+    "审计发现 launcher 时代 303 份日志中有 302 份的实际 MPI process 数与文件名不符（文件名请求 2048 ranks，PETSc header 只报 32），"
+    "据此废弃该阶段全部性能曲线，并把「从日志内容而非文件名解析 process / thread 数」写成分析入口的硬校验。"),
+
+"c_pipeline": ("可审计管线与工程化：",
+    "每份日志须通过 PETSc 自报 architecture、实际 ranks × threads、20 次 solve 全部收敛、timed stage 恰好 19 个 KSPSolve 且无 PCSetUp 等六项检查才进聚合，"
+    "未通过标为 superseded、永不混进中位数；Slurm 提交脚本参数化生成全部正式配置，16 个分析脚本配 pytest 锁死头条数值，"
+    "GitHub Actions 跑公开数据测试并用 fake Slurm 执行提交路径。"),
+
+# ---- 一页版：每个项目只留最核心的三条，结果打头、机制跟在破折号后 ----
+"o_layout": ("布局选型：",
+    "2D weak scaling 上 64×2 比 flat MPI 高 13.1%（165M unknowns / 32 节点、794.8M equations/s），"
+    "fixed-20M strong scaling 达 29.83× 加速、93.2% 累积效率；3D 上最佳布局改为 32×4（最大增益 33.2%）"
+    "与 16×8（比 flat MPI 快 3.81×）——最佳并行度随维度、规模与每核工作量改变，不存在单一「最优线程数」；"
+    "这与固定 batch 继续扩机器时的收益递减是同一类问题。"),
+
+"o_map": ("机理归因：",
+    "Linaro MAP 把布局排序解释为两条曲线的交点——threads/rank 上升时 solve window 内 MPI 占比 46.7%→6.2%、"
+    "OpenMP 等待 48.3%→76.5%，即「通信暴露」与「线程空转」的权衡；排除 threaded BLAS 的解释（LibSci ≤ 2.1% core-time），"
+    "并因插桩扰动运行时间而只读占比排序、不与未插桩 timing 混用。"),
+
+"o_audit": ("可信度门禁：",
+    "审计出 303 份日志中有 302 份的实际 MPI process 数与文件名不符，据此废弃整阶段性能曲线，"
+    "正式结论只用 408 个通过内容审计的 run——把「从日志内容而非文件名解析 process / thread 数」写成分析入口硬校验；"
+    "提交脚本参数化生成全部正式配置，pytest 锁死头条数值，GitHub Actions 用 fake Slurm 跑通提交路径。"),
 
 # 结论合并版：给 platform 变体用，省出篇幅给管线
 "results_merged": ("性能结论（摘要）：",
@@ -228,6 +356,23 @@ P2 = {
     "未调用工具、幻觉工具名、坏 JSON 三类异常统一收敛为显式 unknown，绝不猜参数以避免「静默算错」。"
     "自建 30 问五类中文评测集（期望值是 tool call 而非答案文本）给两个 router 打同一份分，"
     "消融显示同一模型去掉 system prompt 只有 63.3%——准确率主要由工具说明书与策略 prompt 决定。"),
+
+# ---- 一页版：两条 ----
+"o_eval": ("可评测的路由：",
+    "中文规则 router 作为可验证 baseline，与 LLM function calling router 输出严格同构（intent + 参数），"
+    "共用同一套自建 30 问五类中文评测集打分——规则 83.3%、LLM 100%；"
+    "消融显示同一模型去掉 system prompt 只有 63.3%，即准确率主要由工具说明书与策略 prompt 决定，而非模型本身。"),
+
+"o_def": ("防御式解析与工程化：",
+    "未调用工具、幻觉工具名、arguments 非合法 JSON 三类异常统一收敛为显式 unknown，绝不猜参数以避免「静默算错」；"
+    "trace_id 贯穿的 JSON Lines 事件流可完整回放一次执行，FastAPI 的 POST /ask 把非法 router 拦为 422、缺 key 映射 503；"
+    "229 项自动化测试全量离线可跑、不需要 API key。"),
+
+# ai_infra 压缩版：把服务化 + 可观测 + RAG 收成一条
+"c_serve": ("服务化与可观测性：",
+    "trace_id 贯穿的 JSON Lines 事件流可完整回放一次执行，脱敏收敛在单一出口点并由扫描测试强制；"
+    "FastAPI 暴露 POST /ask，非法 router 由 Pydantic 拦为 422、缺 key 映射 503 而非 500；"
+    "最小 RAG 用 IDF 加权词法检索（纯标准库、刻意不用向量库），未开启时 messages 与评测时逐字节一致并由测试锁死，以保结论可比。"),
 }
 
 # ---------------- 项目三：MARL ----------------
@@ -238,6 +383,8 @@ P3_DESC = ("项目描述：",
     "差异只在 critic 分支。结论与直觉相反——表达能力更强的 critic 没有赢：稀疏奖励的 Predator-Prey（300k steps）上，"
     "最简单的加性分解唯一学到正回报（≈150），单体 critic 始终为负（−300 → −30），单调 mixing 的 critic loss 起手即 5.4×10⁴、200k 步后二次发散。"
     "技术栈：Python、PyTorch、PyMARL、MAPPO、VDN、QMIX、CTDE、PPO、PettingZoo / MPE2。")
+# 技术栈内联进标题行的变体用这份描述（去掉末尾重复的技术栈句）
+P3_DESC_SHORT = (P3_DESC[0], P3_DESC[1].rsplit("技术栈：", 1)[0].rstrip())
 P3 = [
 ("训练不收敛的根因诊断：",
     "MAPPO-QMIX 的 TD 目标沿用 value-based QMIX 的 max_a Qᵢ（贪婪动作），而 actor 是 on-policy，"
@@ -247,6 +394,12 @@ P3 = [
     "去掉单调约束的 non-monotonic mixer 持续梯度爆炸、未在预算内收敛，如实写进论文；"
     "并指出三个 learner 实际都只产出一个共享标量 advantage，收益来自表示与梯度路径而非真正的 per-agent credit assignment。"
     "2026 年整理为可复现仓库：修正 Predator-Prey 合作边界、用 uv.lock 锁 CPU 版 PyTorch 使实验无需 GPU、补 pytest 并接入 GitHub Actions CI。"),
+# [2] 一页版：结论 + 根因 + 负结果压成一条
+("反直觉结论与根因诊断：",
+    "表达能力更强的 critic 没有赢——稀疏奖励的 Predator-Prey（300k steps）上最简单的加性分解唯一学到正回报（≈150），"
+    "单体 critic 始终为负，QMIX 的 critic loss 起手即 5.4×10⁴、200k 步后二次发散。"
+    "根因是 MAPPO-QMIX 的 TD 目标沿用 value-based 的 max_a Qᵢ（贪婪动作）而 actor 是 on-policy，"
+    "相减得到的 td_error 并非合法 advantage 而是系统性偏乐观的量；非单调 mixer 的持续梯度爆炸作为负结果如实写进论文。"),
 ]
 
 # ============================================================ 变体配置
@@ -272,6 +425,34 @@ VARIANTS = {
     p1=["design", "retract", "pipeline", "weak", "strong", "map", "ops", "limits"],
     p2=["arch", "fc_eval_merged", "ops"],
 ),
+# 对标 ref/ai_infra 那份进面简历的排布。四处结构性差异：
+#   1. 教育背景下加「关联课业」一行         2. 技能段改关键词式（SKILL_KW），行数减半
+#   3. 技术栈内联进项目标题，每项目省一行   4. bullet 数字前置、压到两行内
+# ✅ 投递用的一页版。每个项目只留最核心的 2–3 条，技能压到四行。
+"ai_infra": dict(
+    file=f"CV_ai_infra_{DATE}.docx",
+    tagline=None,
+    courses=True,
+    skills_1p=["lang", "hpc", "ml", "eng"],
+    stack_inline=True,
+    onepage=True,
+    p1=["o_layout", "o_map", "o_audit"],
+    p2=["o_eval", "o_def"],
+    p3=[2],
+),
+# 两页详细版：面试前自己回读，或对方明确要长版时用。一页版是它的子集，无独有表述。
+"ai_infra_full": dict(
+    file=f"CV_ai_infra_详细版_{DATE}.docx",
+    tagline=None,
+    courses=True,
+    title_key="ai_infra",
+    skills_kw=["lang", "parallel", "profiling", "dl", "gpu", "eng"],
+    stack_inline=True,
+    # 结论打头（对齐参考简历的数字前置），机理与推论紧随，方法与审计垫底
+    p1=["c_layout", "c_map", "c_saturate", "design", "c_retract", "c_pipeline"],
+    p2=["arch", "fc", "eval", "c_serve"],
+    p3=[0, 1],
+),
 }
 
 
@@ -290,35 +471,59 @@ def build(key, cfg):
     if cfg["tagline"]:
         P.append(para([(cfg["tagline"], True)], sz=19))
     P.append(para(EDU_MSC, sz=19))
-    P.append(para(EDU_BSC, sz=19, border=True))
+    P.append(para(EDU_BSC, sz=19, border=not cfg.get("courses")))
+    if cfg.get("courses"):
+        P.append(para([(COURSES[0], True), (COURSES[1], False)], sz=19, border=True))
 
+    inline = cfg.get("stack_inline")
+
+    def title(text, stack, link_text):
+        """项目标题行。inline 变体把技术栈并进标题，省掉单独的「技术栈：」行。"""
+        segs = [(text, True)]
+        if inline:
+            segs.append(("  ｜" + stack, False))
+        segs.append((link_text, False))
+        return para(segs, sz=20)
+
+    onepage = cfg.get("onepage")
+    skills, table = ((cfg["skills_1p"], SKILL_1P) if cfg.get("skills_1p")
+                     else (cfg["skills_kw"], SKILL_KW) if cfg.get("skills_kw")
+                     else (cfg["skills"], SKILL))
     P.append(f'<w:p><w:pPr>{rpr(24, True)}</w:pPr>{run("技术能力", 24, True)}</w:p>')
-    for k in cfg["skills"]:
-        h, b = SKILL[k]
+    for k in skills:
+        h, b = table[k]
         P.append(para([(h, True), (b, False)], sz=19))
     P.append(spacer(12))
 
     # 项目一
-    P.append(para([(P1_TITLE[key], True), (P1_LINK, False)], sz=20))
-    P.append(para([(P1_DESC[0], True), (P1_DESC[1], False)], sz=19))
-    P.append(para([(P1_STACK[0], True), (P1_STACK[1], False)], sz=19))
+    if inline:   # 标题里不再带「项目经历：」前缀，改用与「技术能力」同级的段头
+        P.append(f'<w:p><w:pPr>{rpr(24, True)}</w:pPr>{run("项目经历", 24, True)}</w:p>')
+    p1_desc = P1_DESC_1P if onepage else P1_DESC_SHORT if inline else P1_DESC
+    P.append(title(P1_TITLE[cfg.get("title_key", key)], P1_STACK_INLINE, P1_LINK))
+    P.append(para([(p1_desc[0], True), (p1_desc[1], False)], sz=19))
+    if not inline:
+        P.append(para([(P1_STACK[0], True), (P1_STACK[1], False)], sz=19))
     for k in cfg["p1"]:
         P.append(bullet(*P1[k], numid=NUM_A))
     P.append(spacer(12))
 
     # 项目二
-    P.append(para([(P2_TITLE, True), (P2_LINK, False)], sz=20))
-    P.append(para([(P2_DESC[0], True), (P2_DESC[1], False)], sz=19))
-    P.append(para([(P2_STACK[0], True), (P2_STACK[1], False)], sz=19))
+    p2_desc = P2_DESC_1P if onepage else P2_DESC
+    P.append(title(P2_TITLE, P2_STACK_INLINE, P2_LINK))
+    P.append(para([(p2_desc[0], True), (p2_desc[1], False)], sz=19))
+    if not inline:
+        P.append(para([(P2_STACK[0], True), (P2_STACK[1], False)], sz=19))
     for k in cfg["p2"]:
         P.append(bullet(*P2[k], numid=NUM_A))
     P.append(spacer(12))
 
     # 项目三
-    P.append(para([(P3_TITLE, True), (P3_LINK, False)], sz=20))
-    P.append(para([(P3_DESC[0], True), (P3_DESC[1], False)], sz=19))
-    for h, b in P3:
-        P.append(bullet(h, b, numid=NUM_B))
+    p3_desc = P3_DESC_1P if onepage else P3_DESC_SHORT if inline else P3_DESC
+    P.append(title(P3_TITLE, P3_STACK_INLINE, P3_LINK))
+    P.append(para([(p3_desc[0], True), (p3_desc[1], False)], sz=19))
+    # 默认只取前两条；P3[2] 是一页版专用的合并条，不能混进通用变体（会与 P3[0] 重复）
+    for i in cfg.get("p3", [0, 1]):
+        P.append(bullet(*P3[i], numid=NUM_B))
 
     P.append(para([(PAPER[0], True), (PAPER[1], False)], sz=19))
 
@@ -328,7 +533,7 @@ def build(key, cfg):
     sectpr = re.search(r'<w:sectPr.*?</w:sectPr>', doc, re.S).group(0)
     new_doc = head + ''.join(P) + sectpr + '</w:body></w:document>'
 
-    out_path = os.path.join(HERE, cfg["file"])
+    out_path = os.path.join(CN, cfg["file"])
     if os.path.exists(out_path):
         os.remove(out_path)
     with zipfile.ZipFile(out_path, 'w', zipfile.ZIP_DEFLATED) as out:

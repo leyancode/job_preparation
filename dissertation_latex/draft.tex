@@ -151,6 +151,31 @@ hardware mechanism behind the waiting is not established here.
 \listoftables
 \clearpage
 
+\chapter*{Abbreviations}
+\addcontentsline{toc}{chapter}{Abbreviations}
+\begin{tabular}{@{}l p{0.76\textwidth}@{}}
+  AMG    & Algebraic multigrid \\
+  BLAS   & Basic Linear Algebra Subprograms, the standard interface for dense
+           vector and matrix operations \\
+  CCD    & Core Complex Die, two CCXs on an AMD Zen 2 processor \\
+  CCX    & Core Complex, four cores sharing one 16\,MB L3 cache \\
+  CG     & Conjugate gradients \\
+  GAMG   & PETSc's algebraic multigrid preconditioner (\texttt{PCGAMG}) \\
+  GMRES  & Generalised minimal residual method, PETSc's default Krylov solver \\
+  ICC    & Incomplete Cholesky factorisation \\
+  KSP    & PETSc's Krylov subspace solver object \\
+  LAPACK & Linear Algebra PACKage, the dense factorisation layer above BLAS \\
+  LibSci & HPE Cray Scientific Libraries, the vendor's tuned BLAS and LAPACK \\
+  MAP    & Linaro MAP, the sampling profiler used in \Cref{ch:profiling} \\
+  MPI    & Message Passing Interface \\
+  NUMA   & Non-uniform memory access \\
+  OpenMP & Open Multi-Processing, the shared-memory threading interface \\
+  PC     & PETSc's preconditioner object \\
+  PETSc  & Portable, Extensible Toolkit for Scientific Computation \\
+  SMT    & Simultaneous multithreading \\
+\end{tabular}
+\clearpage
+
 \pagenumbering{arabic}
 
 % ===== FILE: chapters/ch1_introduction.tex =====
@@ -506,18 +531,20 @@ preconditioner, updates vectors, and evaluates inner products. These operations 
 different scaling limits, and the distinction runs through the whole dissertation: the
 sparse matrix-vector product exchanges halo values with \emph{neighbouring} subdomains,
 whereas inner products and residual norms require a reduction across \emph{all} ranks.
-\Cref{tab:cg-ops} classifies the work of one iteration accordingly.
+\Cref{tab:cg-ops} classifies the work of one CG step accordingly.
 
 \begin{table}[htbp]
   \centering
-  \caption{Operations in one GAMG-preconditioned CG iteration, with the PETSc event that
-  records each and the number of calls per outer iteration measured in a representative
-  run. Neighbour and global costs scale differently with the rank count, which is why
-  \Cref{sec:bottleneck} separates them.}
+  \caption{Operations in one GAMG-preconditioned CG step, with the PETSc event that
+  records each and the number of calls per step measured in a representative run. A step is
+  one preconditioner application; PETSc's CG performs one more of these per solve than the
+  iteration count it reports, because it evaluates and preconditions the initial residual
+  before the first update. Neighbour and global costs scale differently with the rank
+  count, which is why \Cref{sec:bottleneck} separates them.}
   \label{tab:cg-ops}
   \begin{tabular}{lllr}
     \toprule
-    Operation & PETSc event & Communication & Calls \\
+    Operation & PETSc event & Communication & Calls/step \\
     \midrule
     Matrix-vector product   & \texttt{MatMult}          & neighbour &  28.9 \\
     Multigrid restriction   & \texttt{MatMultTranspose} & neighbour &   7.0 \\
@@ -528,20 +555,36 @@ whereas inner products and residual norms require a reduction across \emph{all} 
     \addlinespace
     Inner products          & \texttt{VecTDot}          & global    &   2.0 \\
     Residual norm           & \texttt{VecNorm}          & global    &   1.0 \\
-    Vector updates          & \texttt{VecAXPY}, \texttt{VecAYPX} & none & 44.6 \\
+    Vector updates          & \texttt{VecAXPY}, \texttt{VecAYPX} & none & 44.7 \\
     \bottomrule
   \end{tabular}
 \end{table}
 % VERIFIED 2026-07-31 from analysis/data/nproc_2d_libsci/logs/repeated_fullnode/165m/
-%   nodes16/logs/ex2_..._ppn128_t1_job14528993_rep1.log: RepeatedSolves has KSPSolve 19
-%   and VecNorm 247, so 13 iterations per solve and 247 iterations in the stage. Counts
-%   above are the stage event counts divided by 247. The GAMG hierarchy has seven levels,
-%   which is why the three multigrid events are 7.0 each; MatMult exceeds one per
-%   iteration because the smoother applies it on every level.
+%   nodes16/logs/ex2_..._ppn128_t1_job14528993_rep1.log. RE-CHECKED 2026-08-05 against
+%   evidence/sanitized_logs/phase3_2d_weak_165m_32n_64x2.log, which reproduces every count
+%   in the table to the digit (MatMult 7144/247=28.9, MatMultTranspose and MatMultAdd and
+%   MatResidual 1729/247=7.0, VecTDot 494/247=2.0, VecScatterBegin 10602/247=42.9).
+%   CORRECTION to the 2026-07-31 note: 247 is NOT the iteration count. RepeatedSolves has
+%   KSPSolve 19, and VecNorm and PCApply are both 247 = 19 x 13, which is one MORE per
+%   solve than the 12 iterations the log itself reports on its "Norm of error ... iterations
+%   12 solves 20" line, because CG evaluates and preconditions the initial residual before
+%   the first update. So 247 is the number of CG steps (equivalently, preconditioner
+%   applications) in the stage; the actual outer iteration count is 19 x 12 = 228. The
+%   counts above are stage event counts divided by 247, and 247 is the correct divisor:
+%   only it makes the multigrid events integral (dividing by 228 gives 7.58 and 2.17). The
+%   same +1 structure holds in every log checked: 20.25M reports 10 iterations with VecNorm
+%   209 = 19 x 11, and the 3D 20M log reports 6 with VecNorm 133 = 19 x 7.
+%   ALSO CORRECTED: the hierarchy has seven COARSENING STEPS, not seven levels. The Main
+%   Stage of the 165M log carries PCGAMG Gal l00-l06, that is seven level transitions and
+%   eight levels, which is why MatMultTranspose, MatMultAdd and MatResidual are 7.0 each:
+%   one restriction, one prolongation and one residual per transition. The 20.25M problem
+%   has six (Gal l00-l05) and gives 6.0 for the same three events. MatMult exceeds one per
+%   step because the smoother applies it on every level. Consistency check on the halo row:
+%   VecScatterBegin 42.9 = 28.9 + 7.0 + 7.0, one exchange per neighbour matrix operation.
 
-The counts show why one iteration is dominated by neighbour exchange rather than by the
+The counts show why one step is dominated by neighbour exchange rather than by the
 two CG dot products: the multigrid hierarchy performs its own halo exchange on every level,
-so the 43 exchanges per iteration outnumber the three global reductions by more than an
+so the 43 exchanges per step outnumber the three global reductions by more than an
 order of magnitude. The two nevertheless scale differently with rank count, and
 \Cref{sec:bottleneck} measures both.
 
@@ -549,22 +592,20 @@ A preconditioner changes the spectrum of the system so that CG reaches the reque
 tolerance in fewer iterations. Algebraic multigrid (AMG) constructs a hierarchy directly
 from the matrix. Smoothing reduces high-frequency error on each level, while restriction,
 coarse-grid correction, and prolongation address error components that a local smoother
-removes slowly \cite{stuben2001amg}. PETSc's GAMG implementation supplies this hierarchy
-without requiring a geometric mesh description \cite{petsc_manual_324}.
+removes slowly \cite{stuben2001amg}. PETSc's GAMG (geometric-algebraic multigrid,
+\texttt{PCGAMG}) supplies this hierarchy without requiring a geometric mesh description
+\cite{petsc_manual_324}. The name is historical; no geometric information is given to it
+here.
 
 GAMG has a setup phase and an application phase. \texttt{PCSetUp} builds the aggregates,
 transfer operators, and coarse matrices. Each subsequent \texttt{PCApply} traverses the
-multigrid hierarchy during \texttt{KSPSolve}. Applications that solve several systems
-with the same operator can reuse the hierarchy, so first-solve time and repeated-solve
-time answer different performance questions. The production scaling results in
-\Cref{ch:multinode} and the profiling analysis both isolate repeated solves with
-preconditioner reuse.
+multigrid hierarchy during \texttt{KSPSolve}. A solver that reuses the hierarchy across
+several systems with the same operator pays the setup once, so first-solve time and
+repeated-solve time answer different performance questions.
 
-The distinction also controls experimental validity. A rank-dependent block-Jacobi
-preconditioner changes its blocks when the rank count changes, so two rank--thread layouts
-would require different iteration counts for numerical rather than performance reasons. AMG
-has no such dependence, which is what makes a cross-layout comparison well posed.
-\Cref{sec:solver} gives the argument in full and the measured iteration counts.
+The choice of preconditioner also controls experimental validity, because block Jacobi
+builds one block per MPI rank and so changes the operator when the layout changes, whereas
+AMG does not. \Cref{sec:solver} measures the effect and settles the comparison on GAMG.
 
 \section{Performance Analysis Tools}
 \label{sec:tools}
@@ -613,7 +654,15 @@ experiments used physical cores with simultaneous multithreading disabled. The s
 stack was PrgEnv-gnu 8.4.0, gcc 11.2.0, cray-mpich 8.1.27, and PETSc 3.24.4. The early
 single-node exploration used \texttt{arch-omp-opt}. The validated repeated-solve campaigns
 used \texttt{arch-omp-libsci-rome-opt}, configured with the threaded
-\texttt{libsci\_gnu\_mp.so.5.0}. Both builds enabled PETSc's OpenMP kernels and used
+\texttt{libsci\_gnu\_mp.so.5.0}. LibSci is HPE Cray's tuned implementation of the Basic
+Linear Algebra Subprograms (BLAS) and LAPACK, the standard interfaces for dense
+vector--vector, matrix--vector and matrix--matrix operations; the \texttt{\_mp} variant
+threads those kernels with OpenMP. A sparse Krylov solve runs on PETSc's own kernels and
+reaches dense BLAS only incidentally, so the library matters here less as a source of speed
+than as a possible confound: its threads would be drawn from the same per-rank thread count
+and pinned to the same cores as PETSc's, and would appear in the same OpenMP runtime that
+\Cref{sec:map-matrix} measures. That section reports how much of the solve it accounts for.
+Both builds enabled PETSc's OpenMP kernels and used
 \texttt{-O3}. One thread per rank in the OpenMP-enabled build is the flat-MPI baseline.
 % TODO: expand from 01 §3.1 (Core Complex Dies, shared L3, 2.25 GHz base frequency) — but
 %   see the two warnings on that file before copying anything out of it.
@@ -780,12 +829,11 @@ identical GAMG hierarchy work or communication across decompositions.
 %   ksp_2d_aggregated.csv `iterations_median`, range 10-13 incl. multi-node rows.
 % DONE 2026-07-31: the eight-number series is now \Cref{tab:iterations-rank}.
 
-GAMG cost has two phases: setup (\texttt{PCSetUp}, building the coarse hierarchy) and
-solve (\texttt{KSPSolve}). In a single-solve run, setup is about 45\% of runtime. In
-applications the preconditioner is reused across solves. The production campaign and
-\Cref{ch:profiling} both isolate the repeated solve phase. A fuller default-versus-GAMG
-table would require additional matched converged points and is not used for the layout
-claims in this dissertation.
+GAMG's two phases carry very different costs, so the production campaign times repeated
+solves with the hierarchy reused rather than first solves; \Cref{sec:whyrepeat} gives the
+measured split and the driver that produces it. A fuller default-versus-GAMG table would
+require additional matched converged points and is not used for the layout claims in this
+dissertation.
 
 \section{Configuration Space and Selection Rules}
 \label{sec:configspace}
@@ -1993,28 +2041,40 @@ overhead.
 For each run, the time of the halo-exchange events (\texttt{VecScatterBegin},
 \texttt{VecScatterEnd}) and of CG's global-reduction events (\texttt{VecTDot},
 \texttt{VecNorm}) is taken from the \texttt{RepeatedSolves} stage and divided by that
-stage's \texttt{KSPSolve} time. Three limits apply and none is removable from
-\texttt{-log\_view} alone. The synchronising events are logged \emph{inside}
+stage's \texttt{KSPSolve} time. 
+Three limits apply and none is removable from
+\texttt{-log\_view} alone. 
+The synchronising events are logged \emph{inside}
 \texttt{MatMult} and its relatives, so this is an exposure share and not a term in an
 additive time budget. Summing every leaf event against \texttt{KSPSolve} gives 116--372\%.
+
+
 Each event time is a maximum over ranks, and different events may attain their maximum on
 different ranks. \texttt{VecTDot} and \texttt{VecNorm} also perform local flops, so their
-time is not purely communication. The quantity is nevertheless measured identically in
+time is not purely communication. 
+
+
+The quantity is nevertheless measured identically in
 every run, which is what makes it comparable across layouts and node counts.
 % VERIFIED 2026-07-31 by analysis/scripts/nproc_2d_libsci/analyze_event_breakdown.py.
 %   It also asserts that SFPack/SFUnpack have call counts identical to
 %   VecScatterBegin/End (they are nested inside them) and excludes them, because
 %   counting both double-counts the halo exchange by roughly a third.
 
-\subsection{Halo Exchange Dominates, and Hybridisation Reduces It}
+\subsection{Halo Exchange Dominates the Exposure, and Hybridisation Reduces It}
 \label{sec:sync-halo}
 \Cref{fig:2d-sync} and \Cref{fig:3d-sync} give the result. In both dimensions the share
 rises monotonically with node count for every layout, and at 21 of the 22 size--node points
-it is strictly ordered by MPI rank count: fewer ranks, less exposure. Halo exchange is the
-larger term throughout. In 2D at 165m on 32 nodes it accounts for 34.3 of flat MPI's 48.2
-percentage points, against 13.9 for the reductions. In 3D at the same point it accounts for
-70.9 of 84.6. The 3D shares are far higher than the 2D shares at every comparable point,
-which is consistent with the seven-point stencil's larger surface-to-volume ratio.
+it is strictly ordered by MPI rank count: fewer ranks, less exposure. The plotted share is
+the sum of the two event classes, which sit on disjoint call paths: the halo exchange is
+reached from \texttt{MatMult} and its relatives, the reductions directly from CG. The
+figures plot only that sum; \Cref{tab:sync-split} separates it along one weak-scaling chain
+in each dimension. Halo exchange is the larger term in every one of the 264 formal runs, by
+a factor of 1.16 to 3.32 in 2D and 2.33 to 6.32 in 3D. In 2D at 165m on 32 nodes it accounts
+for 34.3 of flat MPI's 48.2 percentage points, against 13.9 for the reductions. In 3D at the
+same point it accounts for 70.9 of 84.6. The 3D shares are far higher than the 2D shares at
+every comparable point, which is consistent with the seven-point stencil's larger
+surface-to-volume ratio.
 
 \begin{figure}[htbp]
   \centering
@@ -2033,6 +2093,53 @@ which is consistent with the seven-point stencil's larger surface-to-volume rati
   at the largest point.}
   \label{fig:3d-sync}
 \end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{The exposure share of \Cref{fig:2d-sync} and \Cref{fig:3d-sync} split into its
+  two event classes, along the weak-scaling chain that ends at 165m on 32 nodes, for the
+  extreme layouts. Halo is \texttt{VecScatterBegin} and \texttt{VecScatterEnd}; reduction is
+  \texttt{VecTDot} and \texttt{VecNorm}. Their sum is the quantity plotted, which the
+  figures already give and which is not repeated here. Each row is the repetition whose
+  total is the median of its three, so both components come from the same run. Percentage
+  points of \texttt{RepeatedSolves} \texttt{KSPSolve} time.}
+  \label{tab:sync-split}
+  \begin{tabular}{llrrrr}
+    \toprule
+    & & \multicolumn{2}{c}{$128\times1$} & \multicolumn{2}{c}{$16\times8$} \\
+    \cmidrule(lr){3-4}\cmidrule(lr){5-6}
+    Case & Nodes (size) & Halo & Reduction & Halo & Reduction \\
+    \midrule
+    2D &  1 (5m)    & 15.7 &  5.4 &  6.1 &  2.9 \\
+    2D &  8 (41m)   & 23.4 &  9.4 & 11.2 &  6.1 \\
+    2D & 16 (82m)   & 28.6 & 12.4 & 13.6 &  7.6 \\
+    2D & 32 (165m)  & 34.3 & 13.9 & 16.4 &  9.9 \\
+    \addlinespace
+    3D &  1 (5m)    & 35.1 &  9.9 & 15.3 &  4.6 \\
+    3D &  8 (41m)   & 53.0 & 18.1 & 38.8 &  6.8 \\
+    3D & 16 (82m)   & 59.0 & 15.8 & 46.5 & 10.8 \\
+    3D & 32 (165m)  & 70.9 & 13.6 & 52.4 & 11.5 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+% VERIFIED 2026-08-05 from analysis/data/nproc_{2d,3d}_libsci/tables/
+%   repeated_fullnode_event_shares.csv, columns neighbour_pct and reduction_pct, whose sum
+%   is the sync_pct plotted in fig:2d-sync and fig:3d-sync. "Halo exchange is the larger
+%   term" checked over ALL 264 rows (132 per dimension = 4 layouts x 11 size-node points x
+%   3 repetitions): neighbour_pct > reduction_pct in every one, ratio range 1.16-3.32 in 2D
+%   and 2.33-6.32 in 3D. The chain shown is 5m@1, 41m@8, 82m@16, 165m@32, the one carrying
+%   the 165m 32-node point quoted in the text.
+%   CAUTION 1: rows are the repetition whose sync_pct is the median of its three, NOT the
+%   per-column median. Taking medians column by column does not reproduce the totals,
+%   because different repetitions attain the median of each component: at 3D 32 nodes
+%   128x1 the component medians are 70.94 and 13.13, summing to 84.07, whereas the median
+%   total is 84.56. The 84.6 in the text and in the fig:3d-sync caption is the median
+%   total and is correct.
+%   CAUTION 2: do NOT add a total column back. At one decimal place the printed components
+%   do not always sum to the printed total (3D 32 nodes 128x1: 70.9 + 13.6 = 84.5 against a
+%   true 70.944 + 13.615 = 84.559, printed 84.6). Six of the sixteen cells in the earlier
+%   draft of this table were affected. The total belongs in the figures and, for the one
+%   point quoted, in the running text.
 
 \subsection{Reduced Exposure is Necessary but not Sufficient}
 \label{sec:sync-breakeven}
