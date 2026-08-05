@@ -128,11 +128,12 @@ layout changes with scale and node count. Eight threads per rank wins no point i
 dimension at constant work per core.
 
 A matched extension holds the problem size fixed near 20 million unknowns and scales from
-one to 32 nodes, and there the layouts differ in where they saturate rather than only in
+one to 32 nodes, and there the layouts differ in where they stop scaling rather than only in
 speed. The 2D curves stay within a factor of 1.81 of each other and all four are still improving
-at 4096 cores, whereas in 3D every layout saturates and turns upward at a node count that
-rises with its thread count: eight nodes for flat MPI, which is $2.6\times$ slower again
-by 32, and beyond 32 for $16\times8$, which ends $3.81\times$ faster than it. What
+at 4096 cores, although the last doubling returns only 1.11 to $1.39\times$. In 3D three of
+the four turn upward at a node count that rises with their thread count: eight nodes for flat
+MPI, which is $2.6\times$ slower again by 32, while $16\times8$ is still improving at 32 and
+ends $3.81\times$ faster than it. What
 distinguishes the
 layouts under strong scaling is where they stop scaling, so the same layout is both the
 worst choice at comfortable occupancy and the best one past saturation. PETSc event data
@@ -258,9 +259,9 @@ replaces \texttt{VecMDot} with \texttt{VecTDot} and moves the dominant cost else
   \item \textbf{Evidence that the layout ranking also depends on the scaling regime.} On
     matched fixed-size problems near 20 million unknowns, scaled from one to 32 nodes, the
     2D layouts remain within a factor of 1.81 of each other and all keep scaling, while the
-    3D layouts diverge to a factor of 3.81 because each saturates and turns upward at a node
-    count that rises with its thread count: eight nodes for flat MPI, 16 for the two
-    intermediate layouts, and beyond 32 for $16\times8$. $16\times8$ is last at constant work
+    3D layouts diverge to a factor of 3.81 because three of the four turn upward at a node
+    count that rises with their thread count: eight nodes for flat MPI and 16 for the two
+    intermediate layouts, with $16\times8$ still improving at 32. $16\times8$ is last at constant work
     per core and first at 4096 cores on a fixed problem, so the same measurement supports
     opposite advice in the two regimes.
 
@@ -1798,7 +1799,10 @@ node count is indicative rather than decisive.
   \caption{The two dimensions on the quantities this chapter compares them by. The upper
   block is the weak-scaling matrix at constant work per core, the lower block the
   fixed-size curves of \Cref{sec:strong20m}. Throughput gain and time saving are different
-  conventions and are both given, because the two dimensions are quoted in both.}
+  conventions and are both given, because the two dimensions are quoted in both. A layout
+  is counted as turning upward when its time at some node count exceeds its own minimum.
+  No 2D layout does so by 32 nodes, but the last doubling still returns well under
+  $2\times$ in both dimensions.}
   \label{tab:cross-dimension}
   \begin{tabular}{lll}
     \toprule
@@ -1813,18 +1817,21 @@ node count is indicative rather than decisive.
     Weak efficiency rises with threads & yes & no \\
     \addlinespace
     \multicolumn{3}{l}{\emph{Fixed 20M problem, one to 32 nodes}} \\
-    Layouts that saturate by 32 nodes & none of 4 & 3 of 4 \\
-    First to saturate                 & --- & $128\times1$, at 8 nodes \\
+    Layouts whose time turns upward   & none of 4 & 3 of 4 \\
+    First to turn upward              & --- & $128\times1$, at 8 nodes \\
+    Speedup on the last doubling      & $1.11$--$1.39\times$ & $0.44$--$1.49\times$ \\
     Fastest at 32 nodes               & $64\times2$ & $16\times8$ \\
     Its lead over flat MPI            & $1.02\times$ & $3.81\times$ \\
-    Fastest-to-slowest spread there   & $1.48\times$ & $3.81\times$ \\
+    Fastest-to-slowest spread at 32 nodes & $1.48\times$ & $3.81\times$ \\
     \bottomrule
   \end{tabular}
 \end{table}
-% VERIFIED 2026-08-02 by analysis/scripts/cross_dimension/summarize_cross_dimension.py ->
+% VERIFIED 2026-08-05 by analysis/scripts/cross_dimension/summarize_cross_dimension.py ->
 %   analysis/data/nproc_2d_libsci/tables/cross_dimension_summary.csv. It joins the two
 %   formal summaries, the two strong-scaling summaries and the exposure fits, so no number
-%   in this table is transcribed from another chapter by hand.
+%   in this table is transcribed from another chapter by hand. "Turns upward" is
+%   saturated_within_range: the layout's minimum time falls before the largest node count.
+%   The last-doubling row is strong_last_doubling_speedup_{min,max}, 16 to 32 nodes.
 
 The pattern across the table is that 2D is ordered and 3D is not. Every 2D hybrid layout
 improves relative to flat MPI as concurrency grows, monotonically along both chains, and
@@ -2287,9 +2294,9 @@ dimensions, and the preferred member of that range is dimension-dependent: $64\t
 everywhere in 2D, $32\times4$ or $64\times2$ in 3D depending on size and node count.
 Held at a fixed problem size instead, the same question has a much larger answer. On
 20.25M unknowns in 2D the four layouts stay within a factor of 1.81 of each other from one
-to 32 nodes and all are still scaling at the end. On the matched 20.35M 3D problem they
-diverge:
-every layout eventually saturates, but the node count at which it does rises with the
+to 32 nodes and all are still scaling at the end, on a last doubling worth 1.11 to
+$1.39\times$. On the matched 20.35M 3D problem they
+diverge: three of the four turn upward, and the node count at which they do rises with the
 thread count: eight nodes for flat MPI, 16 for $64\times2$ and $32\times4$, beyond 32
 for $16\times8$. Flat MPI is $2.6\times$ slower at 32 nodes than at its own optimum, so the
 gap to $16\times8$ at 4096 cores reaches $3.81\times$. The strong-scaling regime does not
@@ -2474,8 +2481,9 @@ node later on the other chain no hybrid layout wins at all.
 
 Held at a fixed problem size instead of fixed work per core, the same layouts separate far
 further. Over one to 32 nodes the 2D curves stay within a factor of 1.81 of each
-other and all four are still improving at 4096 cores. The matched 3D curves diverge, because each layout saturates and turns upward at a node
-count that rises with its thread count: eight nodes for flat MPI, 16 for $64\times2$ and
+other and all four are still improving at 4096 cores, on a last doubling worth 1.11 to
+$1.39\times$. The matched 3D curves diverge, because three of the four turn upward at a node
+count that rises with their thread count: eight nodes for flat MPI, 16 for $64\times2$ and
 $32\times4$, beyond 32 for $16\times8$. Flat MPI is $2.6\times$ slower again by 32 nodes,
 where $16\times8$ is the fastest of the four by a factor of 3.81 over it, having been last
 in every weak-scaling comparison. What distinguishes the layouts under strong scaling is not their speed but where
@@ -2613,8 +2621,8 @@ provenance instead, read the raw evidence directly, which is retained unmodified
       & \texttt{csv/derived/repeated\_ fullnode\_formal\_ summary.csv}
       & \texttt{logs/repeated\_ fullnode/} \newline 140 logs per dimension \\
     \addlinespace
-    \Cref{tab:strong20m-best}, \Cref{tab:strong20m-endpoints}, \Cref{fig:2d-strong20m}--\Cref{fig:3d-strong20m-eff}
-      & \texttt{strong\_scaling\_20m/ analyze\_strong\_ scaling\_20m.py}
+    \Cref{tab:strong20m-best}, \Cref{tab:strong20m-endpoints}, \Cref{fig:2d-strong20m}--\Cref{fig:3d-strong20m-eff}, \Cref{tab:strong20m-grid-2d}, \Cref{tab:strong20m-grid-3d}
+      & \texttt{strong\_scaling\_20m/ analyze\_strong\_ scaling\_20m.py}, \newline then \texttt{emit\_runtime\_ grid.py} for the two grids
       & \texttt{csv/derived/strong\_ scaling\_20m/*.csv}, \texttt{tables/strong\_ scaling\_20m/*.csv}
       & \texttt{logs/strong\_ scaling\_20m/} \newline 72 (2D) and 108 (3D) logs \\
     \addlinespace
@@ -2688,6 +2696,10 @@ analysis/.venv/bin/python \
     analysis/scripts/strong_scaling_20m/analyze_strong_scaling_20m.py \
     --dimension 3d
 
+# full layout-by-node runtime grids      -> Table B.1, Table B.2
+analysis/.venv/bin/python \
+    analysis/scripts/strong_scaling_20m/emit_runtime_grid.py
+
 # duplicate-batch reproducibility check    -> Section 4.1.2
 analysis/.venv/bin/python \
     analysis/scripts/strong_scaling_20m/compare_superseded_batches.py
@@ -2716,8 +2728,11 @@ Each script prints the number of logs it validated and the configurations it agg
 and exits non-zero if any check fails. The document is then built with
 \texttt{tectonic docs/dissertation\_latex/draft.tex}.
 
-\chapter{Supplementary Figures}
+\chapter{Supplementary Figures and Tables}
 \label{app:figures}
+
+\section{Weak-scaling throughput}
+\label{app:throughput}
 % Moved out of Chapter 4 on 2026-08-03 with the regime-first restructure. Both labels
 % are unchanged, so the references from Ch4 and the Evidence Index still resolve.
 % Rationale: on a logarithmic node axis these two figures separate the four layouts by
@@ -2749,6 +2764,76 @@ each layout against flat MPI at the same size--node pair instead.
   Whiskers show the observed range of three formal runs.}
   \label{fig:3d-throughput}
 \end{figure}
+
+\section{Fixed-size runtime grids}
+\label{app:strong20m-grids}
+
+\Cref{sec:strong20m} presented these two campaigns as curves. \Cref{fig:2d-strong20m}
+showed the four 2D layouts falling together across the whole range and still falling at 32
+nodes, and \Cref{fig:3d-strong20m} showed the 3D layouts separating instead, as three of
+the four reached a minimum and turned upward.
+
+\Cref{tab:strong20m-grid-2d} and \Cref{tab:strong20m-grid-3d} give every point behind
+those two figures. Chapter 4 tabulates only the fastest
+layout at each node count and the 32-node endpoint, so these grids are what an examiner
+needs to check a runtime read off either figure. The last two columns state what the
+figures show as a shape: the speedup each layout gains over the final doubling, and the
+largest three-repeat spread it showed at any node count on the curve.
+
+The 2D grid falls monotonically in all four rows. No layout has reached its minimum
+within 32 nodes, but the final doubling returns 1.11 to $1.39\times$ rather than the
+$2\times$ of the earlier steps, so the curves are flattening even though none has turned.
+The 3D grid turns upward in three rows out of four, at eight nodes for $128\times1$ and
+16 nodes for $64\times2$ and $32\times4$; the last-doubling column is below 1.00 for
+exactly those layouts that are getting slower.
+
+\begin{table}[htbp]
+  \centering
+  \caption{2D fixed-size campaign, $4500^2$ and 20.25M unknowns, median seconds per solve
+  over three runs at every layout and node count. The final columns give the 16-to-32-node
+  speedup and the largest observed three-repeat spread on that row. All layouts fill the
+  node, so 32 nodes is 4096 cores in every row. Iteration counts range from 9 to 11.}
+  \label{tab:strong20m-grid-2d}
+  \begin{tabular}{lrrrrrrrr}
+    \toprule
+    & \multicolumn{6}{c}{Median s/solve at $N$ nodes} & & \\
+    \cmidrule(lr){2-7}
+    Layout & 1 & 2 & 4 & 8 & 16 & 32 & 16$\to$32 & Spread \\
+    \midrule
+    $128\times1$ & 0.7704 & 0.3399 & 0.1351 & 0.0558 & 0.0313 & 0.0282 & 1.11 & 7.9\% \\
+    $64\times2$ & 0.8260 & 0.3365 & 0.1265 & 0.0541 & 0.0348 & 0.0277 & 1.26 & 2.7\% \\
+    $32\times4$ & 0.8839 & 0.3944 & 0.1465 & 0.0632 & 0.0388 & 0.0317 & 1.22 & 10.8\% \\
+    $16\times8$ & 1.1325 & 0.5223 & 0.2272 & 0.0973 & 0.0568 & 0.0409 & 1.39 & 4.8\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{3D fixed-size campaign, $273^3$ and 20.35M unknowns, median seconds per solve
+  over three runs at every layout and node count. Columns as in
+  \Cref{tab:strong20m-grid-2d}. A 16-to-32-node figure below 1.00 means the layout is
+  slower at 32 nodes than at 16. Iteration counts are 6 or 7 throughout.}
+  \label{tab:strong20m-grid-3d}
+  \begin{tabular}{lrrrrrrrr}
+    \toprule
+    & \multicolumn{6}{c}{Median s/solve at $N$ nodes} & & \\
+    \cmidrule(lr){2-7}
+    Layout & 1 & 2 & 4 & 8 & 16 & 32 & 16$\to$32 & Spread \\
+    \midrule
+    $128\times1$ & 0.9066 & 0.5149 & 0.2208 & 0.0997 & 0.1776 & 0.2599 & 0.68 & 4.2\% \\
+    $64\times2$ & 0.8288 & 0.4041 & 0.2342 & 0.0936 & 0.0748 & 0.1703 & 0.44 & 3.2\% \\
+    $32\times4$ & 0.8022 & 0.4028 & 0.2145 & 0.1192 & 0.0652 & 0.0747 & 0.87 & 11.1\% \\
+    $16\times8$ & 0.9707 & 0.4718 & 0.2475 & 0.1330 & 0.1017 & 0.0681 & 1.49 & 7.6\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+% VERIFIED 2026-08-05 by analysis/scripts/strong_scaling_20m/emit_runtime_grid.py ->
+%   analysis/data/nproc_{2d,3d}_libsci/tables/strong_scaling_20m/
+%   strong_scaling_20m_runtime_grid.csv, which reads the same
+%   strong_scaling_20m_summary.csv that draws fig:2d-strong20m and fig:3d-strong20m.
+%   The script also prints these tabular rows, so they are not typed by hand. Spread is
+%   the row maximum of runtime_spread, (max - min) / median over the three repeats.
 
 \chapter{Full log\_view Excerpts}
 \label{app:logs}
