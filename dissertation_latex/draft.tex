@@ -2071,24 +2071,22 @@ every run, which is what makes it comparable across layouts and node counts.
 \subsection{Halo Exchange Dominates the Exposure, and Hybridisation Reduces It}
 \label{sec:sync-halo}
 \Cref{fig:2d-sync} and \Cref{fig:3d-sync} give the result. In both dimensions the share
-rises monotonically with node count for every layout, and at 21 of the 22 size--node points
-it is strictly ordered by MPI rank count: fewer ranks, less exposure. The plotted share is
+rises monotonically with node count for every layout and along each weak-scaling chain
+separately, and at 21 of the 22 size--node points it is strictly ordered by MPI rank count:
+fewer ranks, less exposure. The chains are panelled apart because they do not coincide: the
+smaller per-core problem is the more exposed one, by up to 15.5 percentage points in 2D and
+8.5 in 3D at the same node count, a difference comparable to the layout separation the
+figure exists to show. The plotted share is
 the sum of the two event classes, which sit on disjoint call paths: the halo exchange is
-reached from \texttt{MatMult} and its relatives, the reductions directly from CG. The
-figures plot only that sum; \Cref{tab:sync-split} separates it along one weak-scaling chain
-in each dimension. Halo exchange is the larger term in every one of the 264 formal runs, by
-a factor of 1.16 to 3.32 in 2D and 2.33 to 6.32 in 3D. In 2D at 165m on 32 nodes it accounts
-for 34.3 of flat MPI's 48.2 percentage points, against 13.9 for the reductions. In 3D at the
-same point it accounts for 70.9 of 84.6. The 3D shares are far higher than the 2D shares at
-every comparable point, which is consistent with the seven-point stencil's larger
-surface-to-volume ratio.
-
+reached from \texttt{MatMult} and its relatives, the reductions directly from CG. 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{ksp2d_sync_share}
   \caption{2D share of \texttt{RepeatedSolves} \texttt{KSPSolve} time spent inside halo
-  exchange and global reduction events. The ordering matches the time-per-iteration
-  ordering in \Cref{fig:2d-ratio} at every node count.}
+  exchange and global reduction events, panelled by unknowns/core chain as in
+  \Cref{ch:multinode}. Only the 40k chain reaches 32 nodes. Each point is the median of
+  three repetitions. The ordering matches the time-per-iteration ordering in
+  \Cref{fig:2d-ratio} at every node count.}
   \label{fig:2d-sync}
 \end{figure}
 
@@ -2096,20 +2094,33 @@ surface-to-volume ratio.
   \centering
   \includegraphics[width=0.85\textwidth]{ksp3d_sync_share}
   \caption{3D share of \texttt{RepeatedSolves} \texttt{KSPSolve} time spent inside halo
-  exchange and global reduction events. Note the vertical scale: flat MPI reaches 84.6\%
-  at the largest point.}
+  exchange and global reduction events, panelled and styled as in \Cref{fig:2d-sync}.
+  Note the vertical scale: flat MPI reaches 84.6\% at the largest point.}
   \label{fig:3d-sync}
 \end{figure}
+
+
+
+The figures plot only that sum; \Cref{tab:sync-split} separates it at four representative
+points along the $\sim$40k unknowns/core chain in each dimension, the chain that reaches 32
+nodes. Halo exchange is the larger term in all sixteen cells, by a factor of 1.7 to 2.9 in
+2D and 2.9 to 5.7 in 3D. At 165m on 32 nodes flat MPI pays 34.3 percentage points to halo
+exchange in 2D and 70.9 in 3D, against 13.9 and 13.6 to the reductions; the totals these
+make up are the 48.2\% and 84.6\% at the right-hand end of \Cref{fig:2d-sync} and
+\Cref{fig:3d-sync}. The 3D shares are far higher than the 2D shares at every point in the
+table, which is consistent with the seven-point stencil's larger surface-to-volume ratio.
 
 \begin{table}[htbp]
   \centering
   \caption{The exposure share of \Cref{fig:2d-sync} and \Cref{fig:3d-sync} split into its
-  two event classes, along the weak-scaling chain that ends at 165m on 32 nodes, for the
-  extreme layouts. Halo is \texttt{VecScatterBegin} and \texttt{VecScatterEnd}; reduction is
-  \texttt{VecTDot} and \texttt{VecNorm}. Their sum is the quantity plotted, which the
-  figures already give and which is not repeated here. Each row is the repetition whose
-  total is the median of its three, so both components come from the same run. Percentage
-  points of \texttt{RepeatedSolves} \texttt{KSPSolve} time.}
+  two event classes, at four representative points along the $\sim$40k unknowns/core chain
+  of \Cref{tab:bands}, for the $128\times1$ and $16\times8$ layouts. Halo is
+  \texttt{VecScatterBegin} and \texttt{VecScatterEnd}; reduction is \texttt{VecTDot} and
+  \texttt{VecNorm}. Their sum is the quantity plotted, so it is left to the figures. Each row
+  is the repetition whose total is the median of its three, so both components come from the
+  same run; the two are rounded independently and at one decimal need not sum to the plotted
+  total (3D, 32 nodes, $128\times1$: 70.9 and 13.6 against a plotted 84.6). Percentage points
+  of \texttt{RepeatedSolves} \texttt{KSPSolve} time.}
   \label{tab:sync-split}
   \begin{tabular}{llrrrr}
     \toprule
@@ -2134,8 +2145,25 @@ surface-to-volume ratio.
 %   is the sync_pct plotted in fig:2d-sync and fig:3d-sync. "Halo exchange is the larger
 %   term" checked over ALL 264 rows (132 per dimension = 4 layouts x 11 size-node points x
 %   3 repetitions): neighbour_pct > reduction_pct in every one, ratio range 1.16-3.32 in 2D
-%   and 2.33-6.32 in 3D. The chain shown is 5m@1, 41m@8, 82m@16, 165m@32, the one carrying
-%   the 165m 32-node point quoted in the text.
+%   and 2.33-6.32 in 3D. The chain shown is the ~40k one of tab:bands, the one carrying the
+%   165m 32-node point quoted in the text.
+%   CAUTION 3 (2026-08-06): the text no longer quotes those 264-run ranges. A reader cannot
+%   check a 264-row range against a 16-cell table, and none of the four extreme rows is even
+%   shown here (they sit on the ~80k chain, on 64x2, on the 2- and 4-node points, or on a
+%   non-median repetition). The text now quotes 1.7-2.9 (2D) and 2.9-5.7 (3D), the same
+%   ratio taken over these 16 cells only, and says "larger term in all sixteen cells".
+%   One decimal is deliberate: unrounded, the 16-cell range is 1.652-2.929 and 2.921-5.681,
+%   while dividing the printed 1-dp values gives 1.66-2.91 and 2.93-5.71. Those agree at one
+%   decimal and disagree at two, so two decimals would be uncheckable off the page.
+%   CAUTION 4 (2026-08-06): the table shows FOUR of the chain's six points (1, 8, 16, 32),
+%   and the caption says "four representative points" rather than implying the whole chain.
+%   Nothing in the text or caption now claims anything about the two omitted points. Their
+%   values, halo/reduction for 128x1 then 16x8, are
+%     2D 2 (10m): 21.2 / 6.4, 8.5 / 3.7     2D 4 (20m): 23.8 / 8.4, 9.4 / 4.8
+%     3D 2 (10m): 47.3 / 12.9, 25.4 / 6.0   3D 4 (20m): 50.1 / 15.0, 32.4 / 5.6
+%   Before restoring them: they expose component-level non-monotonicities (2D 128x1 halo
+%   23.8 -> 23.4 from 4 to 8 nodes; 3D 128x1 reduction peaking at 18.1 at 8 nodes) which
+%   sec:sync-halo does not cover, as it claims monotonicity of the SUM only.
 %   CAUTION 1: rows are the repetition whose sync_pct is the median of its three, NOT the
 %   per-column median. Taking medians column by column does not reproduce the totals,
 %   because different repetitions attain the median of each component: at 3D 32 nodes
@@ -2145,23 +2173,63 @@ surface-to-volume ratio.
 %   CAUTION 2: do NOT add a total column back. At one decimal place the printed components
 %   do not always sum to the printed total (3D 32 nodes 128x1: 70.9 + 13.6 = 84.5 against a
 %   true 70.944 + 13.615 = 84.559, printed 84.6). Six of the sixteen cells in the earlier
-%   draft of this table were affected. The total belongs in the figures and, for the one
-%   point quoted, in the running text.
+%   draft of this table were affected. The total belongs in the figures and, for the points
+%   quoted, in the running text. As of 2026-08-06 the caption states this rounding caveat
+%   explicitly and names the 3D 32-node case, because the running text had said "70.9 of
+%   84.6" while the table printed 70.9 and 13.6, which a reader adds to 84.5. That sentence
+%   was rewritten to attribute the totals to the figures instead of to the components.
 
 \subsection{Reduced Exposure is Necessary but not Sufficient}
 \label{sec:sync-breakeven}
 The ordering alone cannot explain the results, because $16\times8$ has the lowest exposure
-at nearly every point and the worst time per iteration at all 11 points in 2D. What does
-track performance is the \emph{size} of the reduction. Within a single layout, comparing
-its exposure against flat MPI at the same size--node point with its time per iteration
-relative to flat MPI gives the fits in \Cref{tab:sync-breakeven}.
+at every point of \Cref{fig:2d-sync} and \Cref{fig:3d-sync} and yet, in 2D, the worst time
+per iteration at all 11 of them. What does track performance is the \emph{size} of the
+reduction, taken within a single layout, which gives the fits in \Cref{tab:sync-breakeven}.
+
+Let $S_\ell$ be the plotted halo-plus-reduction share of layout $\ell$ and $t_\ell$ its time
+per KSP iteration, both at the same size--node point. The first two columns of
+\Cref{tab:sync-breakeven} are the range, over the 11 points, of
+\[
+  \mathrm{ExposureRemoved} = S_{128\times1} - S_\ell, \qquad
+  \mathrm{TimeRatio} = \frac{t_\ell}{t_{128\times1}},
+\]
+so $\mathrm{ExposureRemoved}>0$ means the layout is less exposed than flat MPI, and
+$\mathrm{TimeRatio}<1$ means it is faster. For example, $\mathrm{ExposureRemoved}$ is
+$(34.3+13.9)-(16.4+9.9)=21.9$ points for 2D $16\times8$ at 165m on 32 nodes in
+\Cref{tab:sync-split}.
+
+Break-even, a measure defined here, is computed from $a$ and $b$,
+\[
+  \mathrm{BreakEven} = \frac{1-b}{a} = \frac{b-1}{|a|}, \qquad a<0,
+\]
+with none when $a\ge0$. These two come from a least-squares fit over each layout's 11 pairs,
+\[
+  \mathrm{TimeRatio} = a\,\mathrm{ExposureRemoved} + b .
+\]
+Here $b$ is the intercept, the time ratio the line gives at $\mathrm{ExposureRemoved}=0$:
+what a layout would cost against flat MPI if it removed no exposure at all, so $b-1$ is the
+cost of threading alone. The slope $a$ is the change in $\mathrm{TimeRatio}$ per point of
+exposure removed, so $|a|$ is how much of that cost one point pays back. Since $a<0$, the
+fitted line drops below one exactly where $\mathrm{ExposureRemoved}$ passes
+$\mathrm{BreakEven}$. The column is therefore a threshold: it is how much exposure a layout
+has to remove before threading pays for itself, and the lower it is, the sooner that
+happens. The fit is descriptive, so single points can fall on the wrong side of it.
+
+The $r$ column is the Pearson correlation, computed from the same 11 pairs,
+\[
+  r = \frac{\operatorname{cov}(\mathrm{ExposureRemoved},\ \mathrm{TimeRatio})}
+           {\sigma_{\mathrm{ExposureRemoved}}\ \sigma_{\mathrm{TimeRatio}}},
+\]
+their covariance over the product of their standard deviations. It shares the sign of $a$
+and says how closely they follow the line, so it measures how firm a break-even is rather
+than adding an effect of its own.
 
 \begin{table}[htbp]
   \centering
-  \caption{Reduction in synchronisation exposure relative to flat MPI at the same
-  size--node point, against time per iteration relative to flat MPI. The break-even column
-  is where the fitted line crosses parity, i.e. how much exposure a layout must remove
-  before its thread overhead is repaid. Eleven points per layout; the fits are descriptive.}
+  \caption{Reduction in synchronisation exposure against time per iteration, both relative
+  to flat MPI at the same size--node point. The break-even value is the exposure reduction
+  the fitted line requires to offset threading overhead. Eleven points per layout; the fits
+  are descriptive only.}
   \label{tab:sync-breakeven}
   \begin{tabular}{llrrrr}
     \toprule
@@ -2176,6 +2244,97 @@ relative to flat MPI gives the fits in \Cref{tab:sync-breakeven}.
     \bottomrule
   \end{tabular}
 \end{table}
+
+% VERIFIED 2026-08-06 for the opening sentence of sec:sync-breakeven, from
+%   repeated_fullnode_exposure_tradeoff.csv in both dimensions.
+%   "lowest exposure at every point": 16x8 has the minimum sync_pct at 11/11 2D points and
+%   11/11 3D points, i.e. 22/22. The sentence previously said "nearly every point", which
+%   UNDERSTATED it. The "nearly" looks borrowed from sec:sync-halo's "21 of the 22 points
+%   strictly ordered by MPI rank count" -- but that is a different claim, about the full
+%   four-layout ordering, and its one exception is 3D 82m/16 nodes, where 64x2 (68.6) sits
+%   below 32x4 (69.3). 16x8 is still the lowest there. Both statements are correct as they
+%   now stand; do not "reconcile" them by weakening this one again.
+%   This claim is NOT derivable from tab:sync-breakeven: the Exposure removed ranges overlap
+%   (2D 16x8 6.3-21.9 against 32x4 5.3-13.7), so a range comparison proves nothing pointwise.
+%   It is read off fig:2d-sync and fig:3d-sync, where 16x8 is the bottom curve in every
+%   panel, and the text now cites those two figures for it.
+%   "worst time per iteration at all 11 points in 2D": true, 11/11, and this one IS derivable
+%   from tab:sync-breakeven because the time-ratio ranges are disjoint -- 16x8 opens at 1.294,
+%   above 32x4's close at 1.096, 64x2's at 0.995, and flat MPI's 1.000 by definition. The
+%   text now spells that argument out. CAUTION: it holds in 2D ONLY. In 3D 16x8 is slowest at
+%   just 6/11 points and its range (0.899-1.122) overlaps both others, so do not generalise
+%   the sentence across dimensions.
+% VERIFIED 2026-08-06: the defining paragraph above was added because the section used
+%   "exposure removed", "time ratio" and "break-even" without defining any of them; only
+%   the table caption glossed break-even. Definitions taken from
+%   analysis/scripts/nproc_2d_libsci/analyze_event_breakdown.py lines 239-240 and 256-262:
+%     exposure_removed_pt = mpi_sync_pct - sync_pct   (NOT a sum -- it is flat MPI's
+%       halo+reduction share minus this layout's, at the same scale/nodes point)
+%       THRESHOLD IS ZERO, not one: this is a difference of two percentages, in points,
+%       while time_ratio is a ratio and its threshold is one. A draft once wrote
+%       "ExposureRemoved > 1"; 2D 64x2's range starts at 0.8, a real point that is above 0
+%       and below 1, so the two thresholds are not interchangeable. The script asserts
+%       positivity for every row (analyze_event_breakdown.py line 398 raises on <= 0).
+%     time_ratio          = seconds_per_iteration / mpi_seconds_per_iteration
+%     slope a, intercept b = np.polyfit(x, y, 1) over the layout's 11 points
+%     break_even x_be      = (1 - b) / a, NaN when a >= 0
+%   PROVENANCE OF THE NAME, 2026-08-06: "break-even" is ordinary technical English for the
+%   threshold at which two opposing effects cancel, so the term needs no citation, but THIS
+%   quantity -- (1-b)/a over the exposure/time-ratio fit -- is not a standard metric from
+%   the literature and carries no reference anywhere in the draft. The text therefore says
+%   "a measure defined here", so that a reader cannot mistake it for a borrowed one. Keep
+%   that clause if the sentence is reworded.
+%   ROLE, added 2026-08-06: for a<0, "TimeRatio < 1" and "ExposureRemoved > BreakEven" are
+%   the same condition ON THE FITTED LINE, which is why the column reads as a threshold.
+%   It is NOT exact on the measured points, and the text says so ("single points can fall on
+%   the wrong side of it"). Checked all 55 points that have a break-even: 5 disagree --
+%   2D 64x2 20m/2 (E=0.8, T=0.993, below break-even yet faster); 2D 32x4 20m/4 (E=12.7,
+%   T=1.059, above break-even yet slower); 3D 64x2 82m/8 (E=4.6, T=1.008) and 165m/16
+%   (E=6.7, T=1.005); 3D 32x4 165m/16 (E=9.2, T=1.047). 3D 16x8 agrees at all 11.
+%   Do not upgrade the threshold sentence to "exactly where" without this caveat.
+%     r                    = pd.Series(x).corr(pd.Series(y)), i.e. PEARSON (pandas default
+%       method='pearson'). The table header printed a bare "r" and neither the text nor the
+%       caption said which coefficient it was; the defining paragraph now states it.
+%   The printed Pearson formula was checked by hand against the CSV column on 2026-08-06,
+%   summing over each layout's 11 tradeoff rows: 2D -0.6665/-0.5922/+0.0033 and 3D
+%   -0.8612/-0.9014/-0.8277 for 64x2/32x4/16x8, matching to four decimals.
+%   "a = r*sigma_T/sigma_E" also verified on all six: r*sT/sE reproduces np.polyfit's slope
+%   to five decimals (e.g. 3D 32x4 -0.01747, 2D 16x8 +0.00008). r^2 is 2D 0.444/0.351/0.000
+%   and 3D 0.742/0.813/0.685. These are no longer quoted in the text: the defining paragraph
+%   carries no instances, by the same rule applied to a and b, and a reader who wants them
+%   can square the printed r column. The one point they used to make and nothing now does is
+%   that 2D 32x4's break-even of 11.7 rests on a much looser fit (r^2=0.35) than 3D 32x4's
+%   7.3 does (r^2=0.81); if that caveat is wanted, it belongs in the paragraph after the
+%   table, next to "three exceed 0.8 in magnitude".
+%   NOTE the script's docstring: pooling layouts INVERTS the sign of r, because the
+%   layout removing the most exposure is also the slowest, so r is per-layout only.
+%   CORRECTION 2026-08-06: sec:sync-limits printed the pooled 2D figure as "-0.58". It is
+%   "+0.58" -- recomputed as tradeoff.exposure_removed_pt.corr(time_ratio) over all 33 rows:
+%   2D +0.5804, 3D +0.0983. The minus sign destroyed the sentence's own argument, since a
+%   pooled -0.58 has the SAME sign as the within-layout -0.59 and -0.67 and would show no
+%   inversion at all. The corrected text quotes the within-layout pair alongside it so the
+%   inversion is visible on the page.
+%   The worked example is checkable off tab:sync-split alone: 34.3+13.9=48.2 for 128x1 and
+%   16.4+9.9=26.3 for 16x8 at 2D 165m/32, difference 21.9, which is the printed top of the
+%   2D 16x8 exposure-removed range. Unrounded the CSV gives 48.2231 - 26.3569 = 21.8662.
+%   The 1.294 cited is the time_ratio of that same row, and is the min of that layout's
+%   range, so the two numbers come from one run and not from two ends of the table.
+%   Intercepts backing "threading cost at zero exposure removed": 2D 1.0178/1.1305/1.4313,
+%   3D 1.0618/1.1270/1.4226 for 64x2/32x4/16x8. Slopes 2D -0.01529/-0.01113/+0.00008 and
+%   3D -0.02160/-0.01747/-0.01582.
+%   NOTE 2026-08-06: a and b are NOT columns of tab:sync-breakeven, so worked values for
+%   them cannot be checked against the printed table. Illustrations that had been in the
+%   text (b-1 = 43% for 16x8; |a| = 0.022, i.e. 2.2% per point, for 3D 64x2; and the
+%   resulting 0.062/0.022 = 2.9) were removed for that reason -- the paragraph defines the
+%   formulae and needs no instances. They are kept here, and are correct. If they are ever
+%   wanted in the text, add a and b as columns first, which would also let a reader verify
+%   (1-b)/a against the printed Break-even.
+%   The "(b-1)/|a|" reading of break-even is algebraically the same as (1-b)/a for a<0, and
+%   was checked row by row on 2026-08-06: 2D 0.0178/0.01529=1.166, 0.1305/0.01113=11.723;
+%   3D 0.0618/0.02160=2.860, 0.1270/0.01747=7.273, 0.4226/0.01582=26.723. All match the
+%   printed column. 2D 16x8 has a>0 so neither form applies; b-1=0.4313 there, i.e. a 43%
+%   handicap that nothing repays. The worked "0.062/0.022 = 2.9" in the text is 3D 64x2
+%   rounded to the precision shown; unrounded it is 0.06176/0.021597 = 2.8598.
 
 \Cref{fig:3d-tradeoff} plots the 3D case that the table summarises. The three layouts form
 three roughly parallel descending lines, displaced from each other along the horizontal
@@ -2233,8 +2392,8 @@ different instruments on different runs and cannot be added into a single budget
 \subsection{What This Does and Does Not Establish}
 \label{sec:sync-limits}
 Pooling all 33 hybrid measurements per dimension inverts the sign of the correlation
-($-0.58$ in 2D), because $16\times8$ combines the largest exposure reduction with the worst
-performance. The relationship is therefore a within-layout one, and reporting a pooled
+($+0.58$ in 2D, against $-0.59$ and $-0.67$ within the two layouts that have a break-even),
+because $16\times8$ combines the largest exposure reduction with the worst performance. The relationship is therefore a within-layout one, and reporting a pooled
 figure would be misleading.
 
 These data identify \emph{where} the layout advantage comes from within PETSc's own event

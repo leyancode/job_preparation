@@ -44,8 +44,11 @@ for dim in 2d 3d; do
   copy_one "$dim" repeated_fullnode_equations_per_second_vs_nodes  "ksp${dim}_throughput_vs_nodes"
   copy_one "$dim" repeated_fullnode_seconds_per_iteration_vs_nodes "ksp${dim}_seconds_per_iteration"
   copy_one "$dim" repeated_fullnode_layout_speedup_vs_mpi          "ksp${dim}_layout_vs_mpi"
-  # Ch6: analysis/scripts/nproc_2d_libsci/analyze_event_breakdown.py (covers both dims)
-  copy_one "$dim" repeated_fullnode_time_breakdown                 "ksp${dim}_sync_share"
+  # Ch6: analysis/scripts/nproc_2d_libsci/plot_sync_share_by_chain.py (covers both dims).
+  #   NOT analyze_event_breakdown.py's repeated_fullnode_time_breakdown, which medians the
+  #   two weak-scaling chains together at each node count and so hides an 8-15 point
+  #   difference and steepens the 16->32 node rise. Keep the by-chain source.
+  copy_one "$dim" repeated_fullnode_sync_share_by_chain            "ksp${dim}_sync_share"
   # Ch4 fixed-20m strong scaling:
   #   analysis/scripts/strong_scaling_20m/analyze_strong_scaling_20m.py --dimension $dim
   copy_flat "nproc_${dim}_libsci/strong_scaling_20m" \
