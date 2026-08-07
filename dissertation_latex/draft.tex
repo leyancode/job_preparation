@@ -2050,16 +2050,18 @@ For each run, the time of the halo-exchange events (\texttt{VecScatterBegin},
 \texttt{VecNorm}) is taken from the \texttt{RepeatedSolves} stage and divided by that
 stage's \texttt{KSPSolve} time. 
 Three limits apply and none is removable from
-\texttt{-log\_view} alone. 
-The synchronising events are logged \emph{inside}
+\texttt{-log\_view} alone.
+First, the synchronising events are logged \emph{inside}
 \texttt{MatMult} and its relatives, so this is an exposure share and not a term in an
-additive time budget. Summing every leaf event against \texttt{KSPSolve} gives 116--372\%.
+additive time budget. Summing every non-container event against \texttt{KSPSolve} gives
+116--372\%, because \texttt{MatMult} and its relatives are themselves containers for the
+halo exchange: the same wait is counted once in \texttt{MatMult}, once in the
+\texttt{VecScatter} pair, and once in \texttt{SFPack}/\texttt{SFUnpack}.
 
-
-Each event time is a maximum over ranks, and different events may attain their maximum on
-different ranks. \texttt{VecTDot} and \texttt{VecNorm} also perform local flops, so their
-time is not purely communication. 
-
+Second, each event time is a maximum over ranks, and different events may attain their
+maximum on different ranks, so the numerator sums maxima that need not be attained on the
+rank supplying the denominator. Third, \texttt{VecTDot} and \texttt{VecNorm} also perform
+local flops, so their time is not purely communication.
 
 The quantity is nevertheless measured identically in
 every run, which is what makes it comparable across layouts and node counts.
@@ -2226,21 +2228,26 @@ than adding an effect of its own.
 
 \begin{table}[htbp]
   \centering
-  \caption{Reduction in synchronisation exposure against time per iteration, both relative
-  to flat MPI at the same size--node point. The break-even value is the exposure reduction
-  the fitted line requires to offset threading overhead. Eleven points per layout; the fits
-  are descriptive only.}
+  \caption{$\mathrm{ExposureRemoved}$ against $\mathrm{TimeRatio}$, both relative to flat MPI
+  at the same size--node point, the first in percentage points. The break-even value is the
+  exposure reduction the fitted line requires to offset threading overhead; $a$ and $b$ are
+  that line's slope and intercept, tabulated as $10^3a$, so $(1-b)/a$ reproduces the last
+  column. \emph{None} marks $a\ge0$, where the line never descends to parity and no
+  break-even exists. Eleven points per layout; the fits are descriptive only.}
   \label{tab:sync-breakeven}
-  \begin{tabular}{llrrrr}
+  \begin{tabular}{lrrrrrr}
     \toprule
-    Case & Layout & Exposure removed (pt) & Time ratio & $r$ & Break-even (pt) \\
+    Layout & Exposure removed & Time ratio & $r$ & $10^3a$ & $b$ & Break-even \\
     \midrule
-    2D & $64\times2$ &  0.8--7.4  & 0.872--0.995 & $-0.67$ & 1.2 \\
-    2D & $32\times4$ &  5.3--13.7 & 0.937--1.096 & $-0.59$ & 11.7 \\
-    2D & $16\times8$ &  6.3--21.9 & 1.294--1.674 & $+0.00$ & not reached \\
-    3D & $64\times2$ &  1.9--15.1 & 0.768--1.022 & $-0.86$ & 2.9 \\
-    3D & $32\times4$ &  5.5--23.5 & 0.751--1.070 & $-0.90$ & 7.3 \\
-    3D & $16\times8$ & 17.4--31.1 & 0.899--1.122 & $-0.83$ & 26.7 \\
+    \multicolumn{7}{@{}l}{\emph{2D}}\\
+    $64\times2$ &  0.8--7.4  & 0.872--0.995 & $-0.67$ & $-15.29$ & 1.0178 & 1.2 \\
+    $32\times4$ &  5.3--13.7 & 0.937--1.096 & $-0.59$ & $-11.13$ & 1.1305 & 11.7 \\
+    $16\times8$ &  6.3--21.9 & 1.294--1.674 & $+0.00$ & $+0.08$  & 1.4313 & none \\
+    \addlinespace
+    \multicolumn{7}{@{}l}{\emph{3D}}\\
+    $64\times2$ &  1.9--15.1 & 0.768--1.022 & $-0.86$ & $-21.60$ & 1.0618 & 2.9 \\
+    $32\times4$ &  5.5--23.5 & 0.751--1.070 & $-0.90$ & $-17.47$ & 1.1270 & 7.3 \\
+    $16\times8$ & 17.4--31.1 & 0.899--1.122 & $-0.83$ & $-15.82$ & 1.4226 & 26.7 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -2322,67 +2329,170 @@ than adding an effect of its own.
 %   Intercepts backing "threading cost at zero exposure removed": 2D 1.0178/1.1305/1.4313,
 %   3D 1.0618/1.1270/1.4226 for 64x2/32x4/16x8. Slopes 2D -0.01529/-0.01113/+0.00008 and
 %   3D -0.02160/-0.01747/-0.01582.
-%   NOTE 2026-08-06: a and b are NOT columns of tab:sync-breakeven, so worked values for
-%   them cannot be checked against the printed table. Illustrations that had been in the
-%   text (b-1 = 43% for 16x8; |a| = 0.022, i.e. 2.2% per point, for 3D 64x2; and the
-%   resulting 0.062/0.022 = 2.9) were removed for that reason -- the paragraph defines the
-%   formulae and needs no instances. They are kept here, and are correct. If they are ever
-%   wanted in the text, add a and b as columns first, which would also let a reader verify
-%   (1-b)/a against the printed Break-even.
+%   SUPERSEDED 2026-08-06: a and b ARE now columns of tab:sync-breakeven, added so that a
+%   reader can divide (1-b)/a and recover the Break-even column unaided.
+%   PRECISION IS LOAD-BEARING: a is printed to 5 dp and b to 4 dp because that is the
+%   coarsest pair at which all five break-evens reproduce to one decimal. At 4 dp for a,
+%   2D 32x4 gives 0.1305/0.0111 = 11.76 -> 11.8 against a printed 11.7, and at 3 dp for b,
+%   3D 16x8 gives 26.8 against 26.7. Do not trim these columns to match the others.
+%   The text still carries no instances of a or b: the defining paragraph names them and
+%   the table supplies the values, which is the division of labour Leyan asked for.
 %   The "(b-1)/|a|" reading of break-even is algebraically the same as (1-b)/a for a<0, and
 %   was checked row by row on 2026-08-06: 2D 0.0178/0.01529=1.166, 0.1305/0.01113=11.723;
 %   3D 0.0618/0.02160=2.860, 0.1270/0.01747=7.273, 0.4226/0.01582=26.723. All match the
 %   printed column. 2D 16x8 has a>0 so neither form applies; b-1=0.4313 there, i.e. a 43%
 %   handicap that nothing repays. The worked "0.062/0.022 = 2.9" in the text is 3D 64x2
 %   rounded to the precision shown; unrounded it is 0.06176/0.021597 = 2.8598.
-
-\Cref{fig:3d-tradeoff} plots the 3D case that the table summarises. The three layouts form
-three roughly parallel descending lines, displaced from each other along the horizontal
-axis: each removes more exposure than the one before it, and each needs more of it before
-crossing parity.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.85\textwidth]{ksp3d_exposure_tradeoff}
-  \caption{3D exposure removed relative to flat MPI against the resulting time per
-  iteration, one point per size--node pair. Where a layout's fitted line crosses parity is
-  the break-even column of \Cref{tab:sync-breakeven}; the lines are descriptive, not
-  predictive.}
-  \label{fig:3d-tradeoff}
-\end{figure}
+% EDITORIAL 2026-08-07. Four changes to the prose below, no number touched.
+%   (a) The 3D-before-2D order is now signposted in the opening sentence. It is deliberate:
+%       all three 3D layouts have a negative r and a reachable break-even, and the three
+%       |r|>0.8 rows ARE the three 3D rows, so 3D establishes the rule and 2D 16x8 is the
+%       exception. tab:sync-breakeven keeps its 2D-first row order, matching tab:sync-split
+%       and fig:2d-sync/fig:3d-sync.
+%   (b) The break-even list was reordered to 3D-then-2D so the paragraph agrees with (a).
+%       Same six values, same pairing with tab:sync-breakeven.
+%   (c) CORRECTION: the text said "the two things Ch5 could not", while sitting inside Ch5
+%       (ch:profiling). It means ch:multinode, which is Chapter 4. Stale numbering from
+%       before the old Ch4 "Single-Node Performance Evaluation" was dissolved on 2026-07-16
+%       (see line ~1241); under the old scheme the multinode chapter was Ch5. This was the
+%       only hardcoded ChN left in BODY text -- the survivors at 880/962/1151/1241/1424/
+%       2896/2999 are all comments and still carry the old numbering. Now \Cref.
+%   (d) fig:2d-tradeoff moved up to sit directly after fig:3d-tradeoff. Its caption says
+%       "Compare with fig:3d-tradeoff" and the two were ~40 lines apart. Moving it also
+%       reattached the "\Cref{tab:map-shares} identifies that cost" clause, which had been
+%       orphaned into its own paragraph by the float and read as a dangling "that cost".
+% VERIFIED 2026-08-07, rewritten after the a/b columns were added to tab:sync-breakeven.
+%   The a and b values as typed reproduce repeated_fullnode_exposure_fits.csv in both
+%   dimensions to the printed precision, and (1-b)/a regenerates the Break-even column for
+%   all five rows that have one (2D 1.17/11.72, 3D 2.86/7.27/26.72). 2D 16x8 has a>0, so
+%   (1-b)/a is -5428 and there is NO break-even, not a distant one -- the text now says so.
+%   REPAIRED: the restructure had cut the break-even list out of the middle of a sentence,
+%   leaving "demands more before it pays:" dangling and the tail "then unreachable in 2D."
+%   orphaned after the two floats. Both halves are gone; the list is not reprinted at all,
+%   because it is now a column of the table and the prose points at columns instead.
+%   REPLACED EVIDENCE for non-monotonicity. The old text compared 3D 32x4 at 41m/4 nodes
+%   against 64x2 at 41m/8 nodes and called it "four nodes later". Those two points differ in
+%   layout, node count AND weak-scaling chain: unknowns_per_core is 80202 at 41m/4n (the
+%   ~80k chain) but 40101 at 41m/8n (the ~40k chain). Three variables at once, and "later"
+%   implied a progression along one chain that does not exist. The replacement holds layout
+%   and chain fixed and walks the node count: 3D 32x4 on the ~40k chain, six points, and the
+%   exposure removed and the time ratio reverse together at all five transitions. Checked
+%   across both chains: 64x2 is 9/9 and 32x4 is 9/9, hence "all 18". 16x8 is only 7/9 (the
+%   ~80k chain breaks at 2->4 and 4->8 nodes), which is why the sentence names the two
+%   layouts and does NOT generalise to all three. Source: the exposure_tradeoff CSVs.
+%   The 2D threshold sentence was kept -- same layout, same chain, adjacent node counts, so
+%   it was already clean -- and scoped to the ~40k chain, which STRENGTHENS it: on the ~80k
+%   chain 2D 32x4 never removes more than 8.6 points, never reaches the 11.7 threshold, and
+%   never crosses parity (minimum 1.004). The threshold is confirmed in both directions.
+%   b-column claim is scoped deliberately: 32x4 (1.1305 vs 1.1270) and 16x8 (1.4313 vs
+%   1.4226) agree across dimensions to under a point, but 64x2 (1.0178 vs 1.0618) does NOT
+%   -- 1.8% against 6.2%, a factor of 3.4. Do not restate this as holding for all three.
+%   "36 points" is flat MPI's exposure share at the largest size--node point, 84.6% in 3D
+%   against 48.2% in 2D (sec:sync-halo), not a difference between the fitted layouts.
+% VERIFIED 2026-08-07, table narrowed from 8 columns to 7. No value changed meaning:
+%   - Case column removed; 2D/3D are now italic \multicolumn subheading rows. Row order is
+%     unchanged (still 2D first), which is the house order of tab:sync-split and
+%     fig:2d-sync/fig:3d-sync. sec:sync-breakeven's PROSE still leads with 3D on purpose.
+%   - a is now tabulated as 10^3 a, so -0.01529 prints as -15.29. Recomputed from
+%     repeated_fullnode_exposure_fits.csv, not by shifting the printed decimal:
+%     2D -15.289/-11.133/+0.079, 3D -21.597/-17.466/-15.815, rounded to 2 dp.
+%     (1-b)/a still reproduces Break-even provided a is read back as 10^-3 times the entry.
+%   - "not reached" -> "none". This is a CORRECTION as well as a narrowing: 2D 16x8 has
+%     a = +0.00008 > 0, so the fitted line rises and there is NO break-even at all. "Not
+%     reached" implied one exists beyond the observed range. break_even_extrapolated is
+%     False for all six rows, and the CSV leaves break_even_pt EMPTY for this row, not large.
+%     The definition paragraph already said "with none when a >= 0"; the table now agrees.
+%   - b kept at 4 dp deliberately. The cross-dimension claim in the prose rests on
+%     1.1305 vs 1.1270 (0.0035) and 1.4313 vs 1.4226 (0.0087); 3 dp still separates them but
+%     leaves no margin, so do not trim it further.
+%   - Both range columns were kept because both are load-bearing: Exposure removed backs
+%     "no break-even figure is an extrapolation", and Time ratio backs the 29-67% claim for
+%     2D 16x8 and the disjoint-ranges argument in the 2026-08-06 note above.
 
 Five of the six correlations are negative and three exceed $0.8$ in magnitude: the more
 exposure a layout removes at a given point, the faster it is relative to flat MPI there.
-The break-even column quantifies the trade-off that \Cref{ch:multinode} could only assert.
-Each doubling of threads per rank removes more exposure but demands more before it pays:
-1.2, then 11.7, then unreachable in 2D; 2.9, then 7.3, then 26.7 in 3D. No break-even
-figure is an extrapolation: every one of them, where it exists, falls inside the range
-of exposure the layout was actually observed to remove.
+The $a$ and $b$ columns say why the threshold then climbs so steeply with threads per rank.
+Read down $b$, the cost of threading before any exposure is removed: it rises sharply at
+each doubling, and at $32\times4$ it is almost independent of the dimension, 1.1305 against
+1.1270, although flat MPI's exposure share differs between 2D and 3D by 36 points at the
+largest size--node point. That agreement is a property of the pooled fits and holds for this
+layout only; \Cref{sec:sync-limits} sets out how far it survives when the two weak-scaling
+chains are separated. Read down $|a|$, the return on one
+point of removed exposure: it falls at every step, and at all three layouts it is larger in
+3D than in 2D. 
+Break-even is their quotient, so a numerator that grows compounds with a
+denominator that shrinks and the thresholds rise faster than the threading cost alone. None
+of them is an extrapolation: every one, where it exists, falls inside the range of exposure
+the layout was actually observed to remove. 
 
-This explains the two things Ch5 could not. In 3D at 41m on four nodes, $32\times4$ removes
-23.5 points and is the fastest measured configuration at $0.751$. Four nodes later, at 41m
-on eight nodes, $64\times2$ removes only 2.0 points and loses at $1.022$. The 3D advantage
-is non-monotone because the exposure it removes is non-monotone, not because the mechanism
-differs. In 2D, $32\times4$ crosses parity between eight and 16 nodes precisely as its
-removed exposure passes its 11.7-point break-even: 9.6 points at 41m on eight nodes for a
-ratio of 1.003, and 13.7 points at 82m on 16 nodes for 0.944.
-
-The 2D $16\times8$ row is the counter-example, and \Cref{fig:2d-tradeoff} shows it
-as a flat cloud among two descending lines. Its correlation is zero: exposure removal
-predicts nothing there, because the layout is slower than flat MPI by 29--67\% at every
-point and some other cost dominates entirely.
+\Cref{fig:3d-tradeoff} and \Cref{fig:2d-tradeoff} plot the fits,
+3D first because all three of its layouts behave the
+same way while the exception the argument turns on lies in 2D. Both split each layout's 11
+points into their two weak-scaling chains, filled against hollow, and draw the tabulated
+pooled fit solid across them. In 3D the three layouts occupy bands displaced from each other
+along the horizontal axis, each removing more exposure than the one before it and each
+needing more of it before crossing parity; the bands flatten as threads per rank rise, which
+is the $a$ column, and within each band the solid line and its two chains stay together.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.85\textwidth]{ksp2d_exposure_tradeoff}
+  \includegraphics[width=\textwidth]{ksp3d_exposure_tradeoff_by_chain}
+  \caption{3D exposure removed relative to flat MPI against the resulting time per
+  iteration. Colour is the layout and point labels are node counts. The solid line is the
+  pooled fit over all 11 points, the one \Cref{tab:sync-breakeven} tabulates; the two broken
+  lines split those points into their weak-scaling chains, dashed with filled markers for
+  $\sim$40k unknowns/core and dash-dotted with hollow markers for $\sim$80k. In 3D the three
+  stay together, every layout's per-chain break-evens falling within 2.4 points of its pooled
+  value. Each line is clipped to the range it was fitted to, so none is extrapolated; the
+  fits are descriptive, not predictive.}
+  \label{fig:3d-tradeoff}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{ksp2d_exposure_tradeoff_by_chain}
   \caption{2D exposure removed relative to flat MPI against the resulting time per
-  iteration. Compare with \Cref{fig:3d-tradeoff}: $64\times2$ and $32\times4$ descend as
-  they do in 3D, but $16\times8$ sits well above parity at every point with no slope at
-  all.}
+  iteration, styled as in \Cref{fig:3d-tradeoff}. Here the solid pooled fits are not summaries
+  of their parts. For $16\times8$ the solid line lies flat while its two chains, correlating
+  at $-0.91$ and $-0.96$ separately, descend steeply across it; $64\times2$ and $32\times4$
+  depart from their pooled fits as well. Note also that $16\times8$ lies above parity at every
+  one of its 11 points, which is read off the markers and not off any fit.}
   \label{fig:2d-tradeoff}
 \end{figure}
- \Cref{tab:map-shares} identifies that
-cost: at the same problem size and node counts, $16\times8$ spends more of its core-time
+
+This explains the two things \Cref{ch:multinode} could not. The first is why the 3D
+advantage rises and falls with node count. Holding a layout and a chain fixed and walking the
+node count, $\mathrm{ExposureRemoved}$ and $\mathrm{TimeRatio}$ reverse together at every
+step. Along the $\sim$40k chain
+in 3D, $32\times4$ has an $\mathrm{ExposureRemoved}$ of 10.4, 16.8, 13.9, 8.8, 5.5 and 15.3
+points from one node to 32, and a $\mathrm{TimeRatio}$ of 0.893, 0.781, 0.844, 0.958, 1.070
+and 0.837: five transitions, five reversals, including the recovery at 32 nodes where a
+9.8-point rise in $\mathrm{ExposureRemoved}$ turns a 7.0\% loss into a 16.3\% gain. All 18
+transitions of $64\times2$ and $32\times4$ across both 3D chains behave this way. The
+advantage is non-monotone because $\mathrm{ExposureRemoved}$ is, not because the mechanism
+differs. That is a statement about the difference and not about either share: along this
+chain $32\times4$'s own exposure rises monotonically from 34.6\% to 69.3\% and flat MPI's
+from 45.0\% to 84.6\%, as \Cref{sec:sync-halo} requires, and only the gap between them turns.
+
+The second is the threshold itself. In 2D, $32\times4$ brackets its own 11.7-point
+break-even along the $\sim$40k chain: an $\mathrm{ExposureRemoved}$ of 9.6 points at 41m on
+eight nodes for a $\mathrm{TimeRatio}$ of 1.003, then 13.7 points at 82m on 16 nodes for
+0.944, crossing parity where the fit puts it. Along the $\sim$80k chain its
+$\mathrm{ExposureRemoved}$ never exceeds 8.6 points and it never crosses, bottoming at
+1.004. The threshold holds in both directions.
+
+The 2D $16\times8$ row is the counter-example, and \Cref{fig:2d-tradeoff} shows what it
+consists of: its pooled $a$ is positive, so the solid line lies flat and the table returns no
+break-even at all, while the two broken lines through the very same 11 points, one per chain,
+both descend steeply across it. The flatness is therefore an artefact of pooling. Taken
+separately the chains correlate at $-0.91$ over the six $\sim$40k points and $-0.96$ over the
+five $\sim$80k points, among the tightest fits in the study. What the layout lacks is
+therefore not a relationship between $\mathrm{ExposureRemoved}$ and speed but enough of the
+former: each chain's line reaches parity only beyond the largest $\mathrm{ExposureRemoved}$
+the layout ever attains, 21.9 points, so neither threshold can be stated without
+extrapolating and neither is ever reached. That it is slower than flat MPI by 29--67\% at every one of its 11 points is
+a direct observation and needs no fit. Some other cost dominates. \Cref{tab:map-shares}
+identifies that cost: at the same problem size and node counts, $16\times8$ spends more of its core-time
 waiting in the OpenMP runtime than any other layout, 76.5\% against 48.3\% for
 $64\times2$ at eight nodes. The two halves of the trade are therefore both measured, one
 on the full matrix without a profiler and the other on eleven profiled cells with one.
@@ -2391,10 +2501,28 @@ different instruments on different runs and cannot be added into a single budget
 
 \subsection{What This Does and Does Not Establish}
 \label{sec:sync-limits}
-Pooling all 33 hybrid measurements per dimension inverts the sign of the correlation
-($+0.58$ in 2D, against $-0.59$ and $-0.67$ within the two layouts that have a break-even),
-because $16\times8$ combines the largest exposure reduction with the worst performance. The relationship is therefore a within-layout one, and reporting a pooled
-figure would be misleading.
+Pooling all 33 hybrid measurements of a dimension destroys the relationship, and does so
+differently in each. In 2D the pooled correlation is $+0.58$, against $-0.67$ and $-0.59$
+within the two layouts that have a break-even; in 3D it collapses to $+0.10$ from three
+values that all exceed $0.8$ in magnitude. The obvious explanation, that $16\times8$
+combines the largest exposure reduction with the worst performance, is sufficient in 3D,
+where dropping that layout restores a pooled $-0.75$, but not in 2D, where dropping it still
+leaves $+0.13$: $32\times4$ there already removes more exposure than $64\times2$ over its
+whole range while being slower over its whole range. The between-layout ordering opposes the
+within-layout one in both dimensions and $16\times8$ is only its most extreme case. The
+relationship is therefore a within-layout one, and reporting a pooled figure would be
+misleading.
+
+The weak-scaling chains cannot be pooled either, and that is a second and independent
+effect. In 3D pooling them is benign: every layout's per-chain fits bracket its pooled one
+and the three break-evens move by at most 2.4 points. In 2D none of the three survives
+pooling unchanged, and $16\times8$ inverts outright, as \Cref{sec:sync-breakeven} sets out.
+\Cref{tab:sync-breakeven} nevertheless reports pooled fits, because five and six points are
+too few to fit a chain separately, and its columns should be read with that in mind: the
+cross-dimension agreement of the $b$ column is a property of the pooled fits, loosening at
+$32\times4$ when the chains are taken apart and failing on the $\sim$40k chain at
+$16\times8$. Neither pooling changes which layouts beat flat MPI, because that is read off
+the measurements and not off a fit.
 
 These data identify \emph{where} the layout advantage comes from within PETSc's own event
 accounting: reduced exposure to halo exchange, with global reduction second and much less
@@ -2414,6 +2542,114 @@ attributing anything to cache capacity, needs the hardware-counter work listed i
 %   and the zeroed initial guess in \Cref{sec:benchmarks}, and the scope limit it implies
 %   ("applies to applications that solve repeatedly with the same operator") in
 %   \Cref{sec:threats}. A separate section would only repeat them.
+
+% VERIFIED 2026-08-07 for the pooling paragraph, recomputed from the exposure_tradeoff CSVs
+%   as tradeoff.exposure_removed_pt.corr(time_ratio):
+%     pooled, all 33 rows      2D +0.5804   3D +0.0983
+%     pooled, 16x8 dropped     2D +0.1252   3D -0.7472   (22 rows)
+%   CORRECTION: the paragraph used to say pooling "inverts the sign ... per dimension" and
+%   quoted only the 2D figure. Both halves were wrong to generalise. 3D does flip sign but
+%   to +0.10, which is destruction of the correlation, not inversion; and the stated cause
+%   ("because 16x8 combines the largest exposure reduction with the worst performance") is
+%   sufficient ONLY in 3D, where removing 16x8 restores -0.75. In 2D removing it leaves
+%   +0.13, still positive, because 32x4's exposure-removed range (5.3-13.7) sits ABOVE
+%   64x2's (0.8-7.4) while its time-ratio range (0.937-1.096) also sits above 64x2's
+%   (0.872-0.995) -- both readable off tab:sync-breakeven. So the between-layout ordering
+%   opposes the within-layout one for every pair in 2D, and 16x8 is the extreme case rather
+%   than the whole cause. Do not restore the single-cause wording.
+%   NOT ADDED, needs a check first: tab:map-shares' MPI core-time share has a structural
+%   ceiling of 1/(threads per rank) if MPI is only ever called from the master thread --
+%   50%, 25%, 12.5% for 64x2/32x4/16x8, against measured 46.7/22.6/6.2 at eight nodes. If
+%   that holds, the cross-layout MPI ordering in sec:map-matrix is partly arithmetic and the
+%   phrase "reproduced here by a different instrument on a different quantity" overstates
+%   the independence. The OpenMP column has the mirror-image ceiling, (t-1)/t = 50/75/87.5%
+%   against measured 48.3/69.3/76.5%. sec:map-matrix's FIXED-LAYOUT observation (16x8 from
+%   53.5% to 76.5% between two and eight nodes) is unaffected, since the ceiling is constant
+%   there, which is why that one is called the discriminating observation. Before writing
+%   any of this down, confirm from the build or a log that PETSc issues MPI outside its
+%   OpenMP regions (MPI_THREAD_FUNNELED, not MULTIPLE); the numbers are consistent with it
+%   but consistency is not proof.
+% VERIFIED 2026-08-07: SECOND pooling axis found -- the weak-scaling CHAINS, independent of
+%   the layout pooling above. np.polyfit per layout per chain (40k n=6, 80k n=5) against the
+%   pooled n=11 row of tab:sync-breakeven, from the exposure_tradeoff CSVs:
+%     3D 64x2  r -0.97 / -0.80 vs pooled -0.86 ; BE 2.5 / 3.7 vs 2.9
+%     3D 32x4  r -0.98 / -0.93 vs pooled -0.90 ; BE 7.4 / 9.7 vs 7.3
+%     3D 16x8  r -0.76 / -0.85 vs pooled -0.83 ; BE 27.0 / 26.7 vs 26.7
+%     2D 64x2  r -0.08 / -0.73 vs pooled -0.67 ; 40k chain has essentially NO relationship
+%     2D 32x4  r -0.66 / -0.92 vs pooled -0.59 ; BE 11.9 / 8.8 vs 11.7
+%     2D 16x8  r -0.91 / -0.96 vs pooled +0.00 ; SIMPSON'S PARADOX
+%   "at most 2.4 points" is 3D 32x4, 9.7 against a pooled 7.3; the other two move 0.8 and 0.3.
+%   2D 16x8 is the serious one. Its two chains are steep lines with very different intercepts
+%   (b = 2.1510 on 40k, 1.5427 on 80k); superposed they read as a flat cloud, which is what
+%   fig:2d-tradeoff shows and what the old text called "exposure removal predicts nothing
+%   there". That reading was WRONG -- within each chain this layout has among the tightest
+%   fits in the study. The real obstacle is that both chains reach parity at 29.7 and 26.2
+%   points while the layout never removes more than 21.9.
+%   THOSE TWO BREAK-EVENS ARE NOT PRINTED, deliberately: both exceed the observed range, so
+%   quoting them would violate this section's own "no break-even figure is an extrapolation".
+%   The text states only the non-extrapolated part (the two correlations) and then falls back
+%   on the direct measurement, time ratio 1.294-1.674 at every one of the 11 points.
+%   The section's CONCLUSION is unaffected: 2D 16x8 is slower than flat MPI everywhere either
+%   way. What changed is the reason given for it.
+%   NOT FIXED, needs your call: the paragraph after tab:sync-breakeven reads the b column
+%   across dimensions as "1.1305 against 1.1270 and 1.4313 against 1.4226". Per chain the
+%   32x4 pair survives but loosens (b-1 is 0.236 vs 0.174 on 40k, 0.169 vs 0.186 on 80k,
+%   against 0.131 vs 0.127 pooled), while the 16x8 pair holds only on 80k (1.5427 vs 1.4670)
+%   and fails badly on 40k (2.1510 vs 1.3929). sec:sync-limits now says this in one clause;
+%   whether that paragraph should also be weakened is an editorial decision, not a numbers one.
+% VERIFIED 2026-08-07: fig:2d-tradeoff and fig:3d-tradeoff REPLACED. They were
+%   ksp{2,3}d_exposure_tradeoff, from analyze_event_breakdown.py's make_tradeoff_plot, which
+%   drew all 11 points of a layout in one colour with one marker and one POOLED fitted line.
+%   Two defects: the chains were indistinguishable, so no point the text names could be
+%   located; and the pooled line is the only thing drawn, so the 2D 16x8 Simpson effect was
+%   invisible -- the figure showed the artefact and hid the parts that produce it.
+%   Now ksp{2,3}d_exposure_tradeoff_by_chain, from the new
+%   analysis/scripts/nproc_2d_libsci/plot_exposure_tradeoff_by_chain.py, which panels by
+%   chain, labels every point with its node count, draws each chain's own fit solid and
+%   repeats the pooled fit dotted in both panels. The 2D 16x8 contrast is now the most
+%   visible thing in that figure: one flat dotted line across two steeply descending solid
+%   ones. The script reads ONLY repeated_fullnode_exposure_tradeoff.csv, so it runs without
+%   the raw logs, the same arrangement as plot_sync_share_by_chain.py; its colours, markers,
+%   CHAINS mapping, panel layout and legend are copied from that script so the Chapter 5
+%   trade-off figures read like the Chapter 4 scaling ones. Its --report output reproduced
+%   the per-chain fits above independently.
+%   Each fitted line is clipped to the range it was fitted to. Spanning the panel instead
+%   sent 2D 16x8's 40k line to 2.15 at zero exposure removed, twelve points left of its
+%   leftmost measurement, which contradicts this section's own no-extrapolation rule.
+%   Chain membership is matched on the (nodes, scale) pairs of CHAINS, not by thresholding
+%   unknowns_per_core, so it is the same mapping the Chapter 4 figures use; the loader raises
+%   if any of the 33 points matches neither chain.
+%   The old figures are left in figures/ and are no longer included by draft.tex.
+% VERIFIED 2026-08-07, second pass on the replacement figures. Both dimensions are now ONE
+%   axes, not two panels: a layout is one colour and one marker shape, the ~40k chain is
+%   filled/dashed and the ~80k chain is hollow/dash-dotted. SOLID IS RESERVED FOR THE POOLED
+%   FIT, so the line a reader traces from tab:sync-breakeven is the prominent one and the two
+%   chains are visibly the things departing from it. In 2D 16x8 that is a flat solid line with
+%   two steeply descending broken lines crossing it, which is the artefact and its cause in
+%   one picture.
+%   FOUR prose repairs the new figures forced, all because the old text described the OLD
+%   figure and the new one contradicts it:
+%   (a) The b-column sentence dropped the 16x8 pair. 1.4313 against 1.4226 is a pooled-fit
+%       coincidence: per chain it is 2.1510 vs 1.3929 on 40k, which fails by 0.76, and only
+%       1.5427 vs 1.4670 on 80k. The 32x4 pair survives separation (b-1 = 0.236 vs 0.174 on
+%       40k, 0.169 vs 0.186 on 80k) so it is kept, now scoped and pointed at sec:sync-limits.
+%       "Only 64x2 differs appreciably" went with it: with 16x8 removed the sentence covers
+%       one layout, so a claim about which others differ has nothing left to rank.
+%   (b) "Neither figure can show it, because both discard node count" was TRUE of the old
+%       figures and is now FALSE -- every point carries its node count. DO NOT RESTORE IT.
+%       The replacement states the method instead of arguing about what the figure can show:
+%       hold a layout and a chain fixed, walk the node count, and the two quantities reverse
+%       together. An intermediate version explained that no fitted LINE can show it (they are
+%       monotone by construction and the x axis is exposure removed) while the point LABELS
+%       can; that was accurate but was meta-commentary on figure-reading, and the plain
+%       statement of method makes it unnecessary. The walk remains traceable on the figure
+%       via the node labels, which the caption already says.
+%   (c) "shows it as a flat cloud among two descending lines" described the pooled scatter.
+%       There is no cloud now; it is a flat solid line with two descending broken ones.
+%   (d) The figure lead-in gained one sentence naming the filled/hollow and solid/broken
+%       encoding, since the reader meets it before either caption.
+%   Numbers unchanged throughout: -0.91, -0.96, the 10.4/16.8/13.9/8.8/5.5/15.3 walk, the
+%   18 transitions, 9.6/13.7 against 11.7, and the 8.6/1.004 ceiling on the 2D 80k chain.
 
 % ===== FILE: chapters/ch7_discussion.tex =====
 \chapter{Discussion}
@@ -2866,6 +3102,11 @@ analysis/.venv/bin/python \
 # event-level breakdown and exposure fits -> Section 5.4
 analysis/.venv/bin/python \
     analysis/scripts/nproc_2d_libsci/analyze_event_breakdown.py
+
+# trade-off figures, panelled by chain   -> Figure 5.4, Figure 5.5
+# reads only the derived table above, so it needs no raw logs
+analysis/.venv/bin/python \
+    analysis/scripts/nproc_2d_libsci/plot_exposure_tradeoff_by_chain.py
 
 # Linaro MAP call-tree shares            -> Section 5.3
 analysis/.venv/bin/python \
