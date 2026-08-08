@@ -133,8 +133,10 @@ speed. The 2D curves stay within a factor of 1.81 of each other and all four are
 at 4096 cores, although the last doubling returns only 1.11 to $1.39\times$. In 3D three of
 the four turn upward at a node count that rises with their thread count: eight nodes for flat
 MPI, which is $2.6\times$ slower again by 32, while $16\times8$ is still improving at 32 and
-ends $3.81\times$ faster than it. The same layout is therefore both the worst choice at
-comfortable occupancy and the best one past saturation. PETSc event data
+ends $3.81\times$ faster than it. What
+distinguishes the
+layouts under strong scaling is where they stop scaling, so the same layout is both the
+worst choice at comfortable occupancy and the best one past saturation. PETSc event data
 show hybridisation reducing exposure to halo exchange and global reduction, and eleven
 Linaro MAP profiles measure the cost that repays: the share of core-time spent waiting in
 the OpenMP runtime rises with threads per rank, reproducibly across two builds, and the
@@ -265,14 +267,14 @@ replaces \texttt{VecMDot} with \texttt{VecTDot} and moves the dominant cost else
 
   \item \textbf{A quantitative account of why, from both sides of the trade.} PETSc's own
     event data show that hybridisation reduces the share of the solve exposed to halo
-    exchange and global reduction at every one of the 22 size--node points, and that within
-    each layout the size of that reduction correlates with the speed advantage. Eleven
-    Linaro MAP profiles, parsed directly from the profile files, measure the countervailing
-    cost as time spent waiting in the OpenMP runtime, which rises with threads per rank while
-    the MPI share falls, reproducibly across two PETSc builds. Each doubling of threads per
-    rank lowers that share further but must lower it further before it repays that cost,
-    which explains the two-to-four-thread optimum, the non-monotone 3D ordering, and why
-    $16\times8$ is slowest in 2D despite lowering it the furthest.
+    exchange and global reduction at 21 of 22 size--node points, and that within each layout
+    the size of that reduction correlates with the speed advantage. Eleven Linaro MAP
+    profiles, parsed directly from the profile files, measure the countervailing cost as
+    time spent waiting in the OpenMP runtime, which rises with threads per rank while the
+    MPI share falls, reproducibly across two PETSc builds. Each doubling of threads per rank
+    removes more exposure but must remove more before it repays that cost, which explains
+    the two-to-four-thread optimum, the non-monotone 3D ordering, and why $16\times8$ is
+    slowest in 2D despite removing the most exposure.
 
   \item \textbf{A repeated-solve measurement method.} A driver that pays the GAMG setup once
     and then times 19 solves in a dedicated PETSc logging stage, so the reported figures are
@@ -372,8 +374,8 @@ executes single-threaded code. This often gives predictable performance and avoi
 safety and OpenMP scheduling costs. A hybrid configuration must outperform this strong
 baseline, not an abstract MPI implementation.
 
-The costs of flat MPI become visible under either of the two standard scaling regimes. This
-dissertation uses both, so the distinction is stated precisely here. Under
+The costs of flat MPI become visible under either of the two standard scaling regimes, and
+this dissertation uses both, so the distinction is worth stating precisely. Under
 \emph{strong} scaling the global problem size is fixed while the core count grows, so the
 work per core falls. Under \emph{weak} scaling the problem size grows with the core count
 so that the work per core stays constant, and perfect weak scaling would hold the time per
@@ -503,10 +505,9 @@ hierarchy, as \Cref{tab:layouts} sets out.
   \end{tabular}
 \end{table}
 
-The last row carries the constraint the rest of the dissertation uses. A rank of eight
-threads crosses the shared-L3 boundary, because a CCX is four cores, but it still fits
-inside a single 16-core NUMA region: none of the four layouts makes a rank span two NUMA
-regions. Any account of why
+The last row is the one to read carefully. A rank of eight threads crosses the shared-L3
+boundary, because a CCX is four cores, but it still fits inside a single 16-core NUMA
+region: none of the four layouts makes a rank span two NUMA regions. Any account of why
 $16\times8$ behaves differently must therefore appeal to L3 capacity or to OpenMP cost, not
 to NUMA placement. This mapping is a plausible mechanism for layout differences, not proof
 of their cause. The experiments fix thread affinity and compare measurements before using
@@ -658,9 +659,9 @@ used \texttt{arch-omp-libsci-rome-opt}, configured with the threaded
 Linear Algebra Subprograms (BLAS) and LAPACK, the standard interfaces for dense
 vector--vector, matrix--vector and matrix--matrix operations; the \texttt{\_mp} variant
 threads those kernels with OpenMP. A sparse Krylov solve runs on PETSc's own kernels and
-reaches dense BLAS only incidentally. The library is therefore a possible confound rather
-than a source of speed: its threads would be drawn from the same per-rank thread count and
-pinned to the same cores as PETSc's, and would appear in the same OpenMP runtime that
+reaches dense BLAS only incidentally, so the library matters here less as a source of speed
+than as a possible confound: its threads would be drawn from the same per-rank thread count
+and pinned to the same cores as PETSc's, and would appear in the same OpenMP runtime that
 \Cref{sec:map-matrix} measures. That section reports how much of the solve it accounts for.
 Both builds enabled PETSc's OpenMP kernels and used
 \texttt{-O3}. One thread per rank in the OpenMP-enabled build is the flat-MPI baseline.
@@ -1887,8 +1888,8 @@ weak-scaling efficiency rises with threads per rank. In 3D the margins are rough
 large, yet no series is monotone, the preferred layout changes with scale and node count,
 and flat MPI degrades least on one of the two chains. The regimes differ as much as the
 dimensions: at constant work per core the layout effect is a matter of per cent, while at
-constant problem size it reaches $3.81\times$ by 32 nodes and is still growing, because the
-layouts differ in where they stop scaling rather than only in speed.
+constant problem size it is unbounded, because the layouts differ in where they stop
+scaling rather than only in speed.
 
 The five-point and seven-point stencils perform different work per equation, so their
 absolute equations-per-second rates are not direct measures of relative algorithm speed.
@@ -2075,7 +2076,7 @@ produce imbalance that is collected at the same barrier, and \Cref{sec:sync-limi
 that to the hardware-counter work of \Cref{sec:futurework}. \Cref{sec:bottleneck} shows
 the other half of the trade, on the full matrix and without a profiler.
 
-A fourth observation is negative. Threaded LibSci is linked into the
+A fourth observation is negative and worth recording. Threaded LibSci is linked into the
 production build and PETSc's sparse solve path barely calls it: BLAS accounts for at most
 2.1\% of solve-window core-time in any LibSci profile, and the baseline profiles sample no
 BLAS frame at all. The threaded BLAS library therefore cannot account for the layout
@@ -2112,7 +2113,7 @@ rank supplying the denominator. Third, \texttt{VecTDot} and \texttt{VecNorm} als
 local flops, so their time is not purely communication.
 
 The quantity is nevertheless measured identically in
-every run, so it remains comparable across layouts and node counts.
+every run, which is what makes it comparable across layouts and node counts.
 % VERIFIED 2026-07-31 by analysis/scripts/nproc_2d_libsci/analyze_event_breakdown.py.
 %   It also asserts that SFPack/SFUnpack have call counts identical to
 %   VecScatterBegin/End (they are nested inside them) and excludes them, because
@@ -2259,39 +2260,9 @@ with none when $a\ge0$. These two come from a least-squares fit over each layout
   \mathrm{TimeRatio} = a\,\mathrm{ExposureRemoved} + b .
 \]
 Here $b$ is the intercept, the time ratio the line gives at $\mathrm{ExposureRemoved}=0$:
-what a layout would cost against flat MPI if its exposure share matched flat MPI's, so $b-1$
-is the cost of threading alone. The slope $a$ is the change in $\mathrm{TimeRatio}$ per point
-of $\mathrm{ExposureRemoved}$, so $|a|$ is how much of that cost one point pays back.
-% VERIFIED 2026-08-08, VOCABULARY. Raised by Leyan: "removes the most exposure" was
-%   unreadable. It meant ExposureRemoved, but three things were wrong with saying it that
-%   way. (1) "removes" implies an action, while ExposureRemoved = S_128x1 - S_l is a
-%   DIFFERENCE between two layouts at the same point; the definition above says the layout
-%   "is less exposed than" flat MPI, a state. (2) bare "exposure" was carrying two meanings
-%   in one section -- S_l ("16x8 has the lowest exposure", 22/22) and the gap ("removes the
-%   most exposure"). (3) a share cannot be removed, only lowered. Six sites changed, no
-%   number touched: the Ch1 contributions item, this paragraph twice, the |a| paragraph,
-%   sec:sync-limits twice, sec:rq3, and sec:threats ("removes exposure to" -> "reduces
-%   exposure to", the correct collocation).
-%   THE RULE, three forms and no fourth:
-%     S_l, the layout's own share          -> "exposure share"
-%     S_128x1 - S_l, the gap to flat MPI   -> $\mathrm{ExposureRemoved}$, or in Ch6 where the
-%                                             symbols are not in play, "sits below flat MPI's
-%                                             exposure share"
-%     being exposed to an event            -> "exposure TO halo exchange" (idiomatic, keep)
-%   NOT changed, deliberately: tab:sync-breakeven's "Exposure removed" column header and the
-%   fig:2d-tradeoff/fig:3d-tradeoff axis wording. Those are labels; prose referring to them
-%   uses the symbol. The sec:sync-limits paragraph was the odd one out to begin with -- the
-%   two paragraphs before it, in sec:sync-breakeven, already use $\mathrm{ExposureRemoved}$
-%   throughout, so this aligns it with its neighbours rather than introducing a new style.
-%   CORRECTION carried over: the Ch1 contributions item also said "21 of 22 size--node
-%   points" for the exposure-reduction claim. That is the THIRD instance of the same
-%   borrowing from sec:sync-halo's rank-count ORDERING claim, after sec:sync-breakeven
-%   (fixed 2026-08-06) and sec:rq3 (fixed 2026-08-08). It is 22/22 -- all three hybrid
-%   layouts have exposure_removed_pt > 0 at 11/11 points in each dimension, and
-%   analyze_event_breakdown.py line 398 raises on <= 0. Grep for "21 of" before adding any
-%   new sentence about exposure reduction; only sec:sync-halo may carry that number, and
-%   only for the four-layout ordering (2D 11/11 + 3D 10/11, the exception being 3D 82m/16n
-%   where 64x2 at 68.6 sits below 32x4 at 69.3). Since $a<0$, the
+what a layout would cost against flat MPI if it removed no exposure at all, so $b-1$ is the
+cost of threading alone. The slope $a$ is the change in $\mathrm{TimeRatio}$ per point of
+exposure removed, so $|a|$ is how much of that cost one point pays back. Since $a<0$, the
 fitted line drops below one exactly where $\mathrm{ExposureRemoved}$ passes
 $\mathrm{BreakEven}$. The column is therefore a threshold: it is how much exposure a layout
 has to remove before threading pays for itself, and the lower it is, the sooner that
@@ -2498,8 +2469,8 @@ each doubling, and at $32\times4$ it is almost independent of the dimension, 1.1
 largest size--node point. That agreement is a property of the pooled fits and holds for this
 layout only; \Cref{sec:sync-limits} sets out how far it survives when the two weak-scaling
 chains are separated. Read down $|a|$, the return on one
-point of $\mathrm{ExposureRemoved}$: it falls at every step, and at all three layouts it is
-larger in 3D than in 2D.
+point of removed exposure: it falls at every step, and at all three layouts it is larger in
+3D than in 2D. 
 Break-even is their quotient, so a numerator that grows compounds with a
 denominator that shrinks and the thresholds rise faster than the threading cost alone. None
 of them is an extrapolation: every one, where it exists, falls inside the range of exposure
@@ -2510,9 +2481,8 @@ the layout was actually observed to remove.
 same way while the exception the argument turns on lies in 2D. Both split each layout's 11
 points into their two weak-scaling chains, filled against hollow, and draw the tabulated
 pooled fit solid across them. In 3D the three layouts occupy bands displaced from each other
-along the horizontal axis, each reaching a larger $\mathrm{ExposureRemoved}$ than the one
-before it and each needing more of it before crossing parity; the bands flatten as threads
-per rank rise, which
+along the horizontal axis, each removing more exposure than the one before it and each
+needing more of it before crossing parity; the bands flatten as threads per rank rise, which
 is the $a$ column, and within each band the solid line and its two chains stay together.
 
 \begin{figure}[htbp]
@@ -2589,10 +2559,10 @@ differently in each. In 2D the pooled correlation is $+0.58$, where the two layo
 have a break-even give $-0.67$ and $-0.59$. In 3D it falls to $+0.10$ from three values that
 all exceed $0.8$ in magnitude.
 
-The obvious reason is that $16\times8$ has the largest $\mathrm{ExposureRemoved}$ and is also
-the slowest. That is enough in 3D: drop it and the pooled figure returns to $-0.75$. It is
-not enough in 2D, where dropping it still leaves $+0.13$. There, $32\times4$ has a larger
-$\mathrm{ExposureRemoved}$ than $64\times2$ at all 11 points and is slower at all 11. The ordering between layouts runs
+The obvious reason is that $16\times8$ removes the most exposure and is also the slowest.
+That is enough in 3D: drop it and the pooled figure returns to $-0.75$. It is not enough in
+2D, where dropping it still leaves $+0.13$. There, $32\times4$ removes more exposure than
+$64\times2$ at all 11 points and is slower at all 11. The ordering between layouts runs
 against the ordering within them in both dimensions, and $16\times8$ is only the clearest
 case. The relationship holds within a layout, so a pooled figure would mislead.
 
@@ -2842,8 +2812,8 @@ The other half of that trade is measured too, on eleven Linaro MAP profiles of t
 runtime rises with threads per rank (48.3\%, 69.3\% and 76.5\% at eight nodes) while the
 MPI share falls (46.7\%, 22.6\% and 6.2\%). Both orderings hold on two different PETSc
 builds. This places the cost that hybridisation must repay in the OpenMP runtime rather than
-at a memory boundary, and it explains why $16\times8$ sits furthest below flat MPI's exposure
-share in 2D and is still the slowest layout at every point. Where a cost is paid is not why it is paid;
+at a memory boundary, and it explains why $16\times8$ removes the most exposure in 2D and is
+still the slowest layout at every point. Where a cost is paid is not why it is paid;
 \Cref{sec:rq4} takes that up.
 
 \subsection{RQ4: How far do the trends generalise, and what would establish a mechanism?}
@@ -2918,7 +2888,7 @@ decomposition. This inflates the quantity the whole of \Cref{ch:profiling} turns
 $0.64L$ in 2D, against about $0.18L$ and $0.02L$ for cube-shaped subdomains of the same
 size. The layout comparison is unaffected, because all four layouts run the same code and
 the model reproduces their measured ordering at every one of the 48 points it was checked
-on. What is scoped is the reading of \emph{why} hybridisation helps: it reduces exposure to
+on. What is scoped is the reading of \emph{why} hybridisation helps: it removes exposure to
 a halo that this decomposition makes large, and a driver built on \texttt{DMDA} would start
 from a much smaller one. How much of the advantage survives that change is untested, and
 \Cref{sec:futurework} names the run that would settle it.
@@ -2983,8 +2953,9 @@ other layouts have stopped scaling. At about 5 thousand unknowns per core on 32 
 was the fastest layout measured and the only one still improving, while flat MPI had been
 getting slower for two doublings and both intermediate layouts for one.
 
-The general form of that advice is stated separately, because it is the part most likely to
-be applied wrongly. Choose the layout for the regime the job actually runs in. If the work per core is comfortable, above roughly 25 thousand unknowns, the
+The general form of that advice is worth stating separately, because it is the guidance
+most likely to be applied wrongly. Choose the layout for the regime the job actually runs
+in. If the work per core is comfortable, above roughly 25 thousand unknowns, the
 layouts differ by single-digit percentages and $64\times2$ is a safe default in 2D, with
 $32\times4$ worth testing in 3D. If instead the problem is fixed and the node count is
 being pushed for time to solution, the choice is worth factors, and it is the most-threaded

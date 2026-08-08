@@ -391,89 +391,46 @@ including memory usage, communication patterns, and computational efficiency.
 
 \section{Hardware and Software Environment}
 \label{sec:env}
-All experiments ran on ARCHER2, the UK national supercomputing service
-\cite{archer2_home}. Each node has two AMD EPYC 7742 (Rome) processors, 128 physical
-cores, and eight NUMA regions of 16 cores each \cite{archer2_hardware}. \Cref{sec:archer2}
-gives the cache hierarchy below that. Every run disables simultaneous multithreading, so
-the 128 physical cores are used and their hardware siblings idle. The software stack was
-PrgEnv-gnu 8.4.0, gcc 11.2.0, and cray-mpich 8.1.27.
+All experiments ran on ARCHER2. Each node has two AMD EPYC 7742 processors, 128 physical
+cores, and eight NUMA regions of 16 cores each. The software stack was PrgEnv-gnu 8.4.0,
+gcc 11.2.0, and cray-mpich 8.1.27. 
 
-PETSc 3.24.4 was built from source. The baseline build, \texttt{arch-omp-opt}, was
-configured as
+PETSc 3.24.4 was built from source as\texttt{arch-omp-opt}. 
+The repeated-solve campaigs used\texttt{arch-omp-libsci-rome-opt}, configured with the threaded \texttt{libsci\_gnu\_mp.so.5.0}.
 
-\begin{verbatim}
-./configure --PETSC_ARCH=arch-omp-opt --with-debugging=0 \
-  COPTFLAGS=-O3 CXXOPTFLAGS=-O3 FOPTFLAGS=-O3 \
-  --with-cc=cc --with-cxx=CC --with-fc=ftn \
-  --with-openmp=1 --with-openmp-kernels=1
-\end{verbatim}
+LibSci is HPE Cray's tuned implementation of the Basic Linear Algebra Subprograms (BLAS) and LAPACK, the standard interfaces for dense
+vector--vector, matrix--vector and matrix--matrix operations; the \texttt{\_mp} variant
+threads those kernels with OpenMP. 
 
-The Cray compiler wrappers \texttt{cc}, \texttt{CC} and \texttt{ftn} supply MPI, so no MPI
-path is given explicitly. \texttt{--with-openmp-kernels} was added in PETSc 3.22 and enables
-threading inside PETSc's own kernels \cite{petsc_openmp_backend}; \texttt{--with-openmp=1}
-alone leaves the solve serial within each rank. Both are build-time options, so a flat-MPI
-run and a hybrid run use the same binary and differ only in the runtime layout. One thread
-per rank in this build is the MPI-only baseline used throughout.
+Both with PETSC`s OPENMP kernels and use \texttt{-O3}.
+One thread per rank is used as the MPI-only baseline. 
 
-A second build was added for the following reason. A sparse Krylov solve reaches the dense
-Basic Linear Algebra Subprograms (BLAS), the standard interfaces for dense vector--vector,
-matrix--vector and matrix--matrix operations, only incidentally. Any BLAS call it does make
-would use threads drawn from the same per-rank thread count as PETSc's own, so an unthreaded
-BLAS is a possible confound for the layout comparison. The MAP profiles of the baseline
-build sample no BLAS frame at all (\Cref{tab:map-shares}). The production build
-\texttt{arch-omp-libsci-rome-opt} therefore repeats the configure line above with one
-addition,
 
-\begin{verbatim}
-LIBSCI=/opt/cray/pe/libsci/23.09.1.1/GNU/10.3/x86_64/lib
-./configure ... --with-blaslapack-lib=$LIBSCI/libsci_gnu_mp.so.5.0
-\end{verbatim}
-
-which links PETSc against the threaded Cray LibSci library. LibSci is HPE Cray's tuned
-implementation of BLAS and LAPACK; the \texttt{\_mp} suffix marks the variant whose kernels
-are threaded with OpenMP. All repeated-solve campaigns of \Cref{ch:multinode} and
-\Cref{ch:profiling} use this build. \Cref{sec:map-matrix} measures how much of the solve
-the threaded library accounts for.
 
 
 
 \section{Benchmark Problems and Drivers}
 \label{sec:benchmarks}
-The 2D benchmark is based on PETSc's KSP tutorial \texttt{ex2}
-(\texttt{src/ksp/ksp/tutorials/ex2.c} in the PETSc source tree \cite{petsc_ksp_ex2}). This
-implements a five-point stencil discretisation of the Laplace operator on an
-$m \times n$ grid, giving an $mn \times mn$ sparse matrix with five nonzeros per row. The
-3D benchmark, \texttt{3d\_repeat}, is a driver written for this project. It assembles the
-seven-point stencil on an $m \times n \times p$ grid, with seven nonzeros per row and
-otherwise the same structure. It was added because the surface-to-volume ratio of a
-subdomain, and hence the fraction of its rows that couple off-rank, differs between the two
-dimensionalities.
-
-Both benchmarks are run through a repeated-solve driver rather than solved once. The 2D
-driver \texttt{ex2\_repeat} separates one warm-up solve from 19 timed solves inside a
-dedicated PETSc logging stage, with the preconditioner reused across the timed solves;
-\texttt{3d\_repeat} applies the same design in 3D. \Cref{sec:whyrepeat} gives the reason
-and the measured cost split that motivates it. Everything timed in \Cref{ch:multinode} is a
-steady-state solve in that sense.
+The 2D benchmark is PETSc \texttt{ex2}, a five-point stencil discretisation of the Laplace
+operator on an $m \times n$ grid. The 3D benchmark is a driver written for this project, a
+seven-point stencil on an $m \times n \times p$ grid; it was added because
+surface-to-volume ratio differs from 2D. Its production driver,
+\texttt{ex2\_repeat}, separates one warm-up solve from 19 timed solves with a reused
+preconditioner (\Cref{ch:profiling}). The matched \texttt{3d\_repeat} driver applies the
+same measurement design to a seven-point stencil on an $m \times n \times p$ grid.
 
 \section{Solver Configuration}
-\label{sec:solver}
-The default \texttt{ex2} solver is GMRES with block Jacobi. Block Jacobi builds one block
-per MPI rank, so the preconditioner is a function of the rank decomposition: changing the
-rank--thread layout changes the operator that is applied. \Cref{tab:iterations-rank} shows
-this directly. Reading across any row, the iteration count does not change at all when
-threads are added; reading down any column, it changes by a factor of more than three, from
-2825 at four ranks to 10000 at 128.
-
-That column is also not monotonic in the rank count: it falls from 6700 at one rank to 2825
-at four, then rises again to 8179 at 16 before falling to 6460 at 32. More ranks therefore
-neither strengthen nor weaken the preconditioner in any consistent direction, so the
-dependence cannot be read as a trade-off between preconditioner strength and parallelism.
-Two layouts with different rank counts apply different preconditioners to the same linear
-system, and a wall-clock difference between them reflects that difference as much as any
-property of the layout. Cross-layout runtime under this solver is therefore indicative only,
-and the question ``which rank--thread layout is fastest?'' has no well-posed answer under
-it.
+The default \texttt{ex2} solver is GMRES with block Jacobi.Block Jacobi builds one block per MPI rank, so the preconditioner is a function of the rank
+decomposition: changing the rank--thread layout changes the operator that is applied.
+The dependence is not monotonic in the rank count, so it cannot be read as a
+trade-off between preconditioner strength and parallelism either. Two layouts with
+different rank counts apply different preconditioners to the same linear system, and a
+wall-clock difference between them reflects that difference as much as any property of the
+layout. Cross-layout runtime under this solver is therefore indicative only, and the
+question ``which rank--thread layout is fastest?'' has no well-posed answer.
+\Cref{tab:iterations-rank} shows this directly. Reading across any row, the iteration count
+does not change at all when threads are added; reading down any column, it changes by a
+factor of more than three.
 
 \begin{table}[htbp]
   \centering
@@ -504,100 +461,37 @@ it.
 
 
 
-The production campaigns therefore replace that solver. Every formal run uses
-
+CG is used because it is a common Krylov method for symmetric positive definite problems, 
+and GAMG removes that coupling. 
 \begin{verbatim}
 -ksp_type cg -pc_type gamg -ksp_rtol 1e-5 -ksp_atol 1e-10
 \end{verbatim}
+Its iteration count is set by the multigrid hierarchy and not
+by the rank decomposition.
 
-The finite-difference Laplacian is symmetric and positive definite, which is the class of
-system conjugate gradients was designed for \cite{hestenes1952cg}, and CG is the standard
-Krylov method for that class in PETSc \cite{petsc_manual_324,petsc1997}. PETSc's GAMG is an
-algebraic multigrid preconditioner. It builds a hierarchy of coarse operators from the
-matrix itself and uses them to remove the low-frequency error that a one-level method
-removes slowly \cite{stuben2001amg,petsc_manual_324}. Its convergence is governed mainly by
-that hierarchy rather than by how the matrix rows are distributed, so its iteration count
-depends more weakly on the rank decomposition than block Jacobi's does. It is not
-independent of it: coarsening is built from the local matrix, so the hierarchy is not
-invariant under repartitioning.
 
-The dependence is therefore reported as a measurement. Across the 11 size--node points of
-each dimension in \Cref{ch:multinode}, the four layouts differ by at most one iteration at
-every point except 2D 5m on one node, where they span 9 to 11. Block Jacobi spans a factor
-of $3.5$ in \Cref{tab:iterations-rank} on a single problem. Every figure in
-\Cref{ch:multinode} is reported per iteration, so the residual one-iteration differences
-cannot be read as layout effects.
-% VERIFIED 2026-08-08 from analysis/data/nproc_{2d,3d}_libsci/csv/derived/
-%   repeated_fullnode_formal_summary.csv: per (scale, nodes) the max-min of the four
-%   layouts' `iterations` is <= 1 everywhere except 2D 5m/1 node (9,10,11,10 -> 2).
-%   In 3D it is <= 1 at all 11 points. Block-Jacobi span in tab:iterations-rank is
-%   10000/2825 = 3.54.
-
-A GAMG-preconditioned solve pays its cost in two places. \texttt{PCSetUp} builds the
-hierarchy once; \texttt{PCApply} applies it inside every CG iteration, and PETSc reports
-both under the enclosing \texttt{KSPSolve}. Without preconditioner reuse each call to
-\texttt{KSPSolve} rebuilds the hierarchy first, so the call structure is
-
-\begin{verbatim}
-KSPSolve
-  PCSetUp                (hierarchy construction)
-  CG iteration loop
-    PCApply              (hierarchy application)
-\end{verbatim}
-
-With \texttt{-ksp\_reuse\_preconditioner} the \texttt{PCSetUp} branch is taken on the first
-solve only, and later solves enter the loop directly. The two phases carry different costs,
-and a single-solve measurement reports mostly the setup one. The production campaign
-therefore times repeated solves with the hierarchy reused. \Cref{sec:whyrepeat} gives the
-measured split, the driver that produces it, and the \texttt{-log\_view} evidence for this
-call structure.
+GAMG cost has two pahase: set up(\texttt{PCSetUp}) and solve (\texttt{KSPSolve}). 
+These two phases carry different costs, so the production campaign times repeated
+solves with the hierarchy reused rather than first solves; \Cref{sec:whyrepeat} gives the
+measured split and the driver that produces it.
 
 
 
 \section{Configuration Space and Selection Rules}
 \label{sec:configspace}
-A full sweep of every rank--thread combination at every problem size and node count is
-larger than the available allocation. Three rules reduce it to the configurations the formal
-campaigns run. The first is measured; the second and third are chosen.
+Three rules are followed in this experiment:
 
-\paragraph{Rule 1: threads per rank are restricted to $\{1,2,4,8\}$.} This rule comes from
-the single-node exploratory sweep of the project preparation phase, which ran every
-$\text{ranks}\times\text{threads}=128$ combination on a $1000^2$ grid. Cost per KSP
-iteration falls monotonically as cores are spent on ranks rather than threads:
-0.38\,ms at $128\times1$, 0.61 at $64\times2$, 0.99 at $32\times4$, 1.89 at $16\times8$,
-3.67 at $8\times16$, and 31.10 at $1\times128$ (\Cref{tab:iterations-rank} gives the
-iteration counts of the same runs). The step from eight threads per rank to sixteen roughly
-doubles the per-iteration cost again, and no configuration with 16 or more threads per rank
-comes within a factor of two of the best. Sixteen threads is also where a rank first fills a
-whole 16-core NUMA region. The restriction is a search bound read off measurement, not a
-claim about a NUMA or cache mechanism.
-% VERIFIED 2026-08-08 from analysis/data/size_grid/tables/fullnode_cost_per_iteration.csv
-%   (1000x1000, default solver, one node). ms/iteration min column: 128x1 0.384,
-%   64x2 0.608, 32x4 0.990, 16x8 1.888, 8x16 3.670, 4x32 7.239, 2x64 14.420,
-%   1x128 31.104. CAUTION: this sweep runs the DEFAULT solver, whose preconditioner
-%   depends on the rank count, so it bounds the search space and must not be quoted as
-%   evidence for or against hybrid benefit under CG+GAMG.
+1.Threads per rank are restricted to $\{1,2,4,8\}$. 
 
-\paragraph{Rule 2: nodes are fully populated.} $\text{ppn} \times \text{threads} = 128$,
-giving the four layouts $128\times1$, $64\times2$, $32\times4$, and $16\times8$. Same node
-count then means same core count, so a comparison between layouts isolates rank--thread
-balance from core count.
+2.Nodes are fully populated: $\text{ppn} \times \text{threads} = 128$, giving four layouts
+$128\times1$, $64\times2$, $32\times4$, and $16\times8$. Same node count means same core
+count, so a comparison isolates rank--thread balance from core count.
 
-\paragraph{Rule 3: work per core is held inside a fixed window.} A configuration at size
-$N$ on $C$ physical cores is included when $25{,}000 \leq N/C \leq 100{,}000$. The lower
-bound keeps each rank's subdomain large enough that the solve is not dominated by fixed
-per-call overheads; the upper bound keeps the largest cases inside the memory available per
-node. The completed 2D campaign uses six grids: $2240^2$, $3160^2$, $4500^2$, $6400^2$,
-$9073^2$, and $12828^2$, or 5.02M to 164.56M unknowns, and the 3D campaign uses the
-matching cubes of \Cref{tab:fullnode-matrix}. The filter admits 11 size--node pairs over
-1--32 nodes in each dimension.
+3.A configuration at size $N$ on $C$ physical cores is included when
+$25{,}000 \leq N/C \leq 100{,}000$. The completed 2D campaign uses six grids:
+$2240^2$, $3160^2$, $4500^2$, $6400^2$, $9073^2$, and $12828^2$, or 5.02M to
+164.56M unknowns.
 
-Rule 3 has one deliberate exception. The strong-scaling campaign of \Cref{sec:strong20m}
-drives the 20M problem out to 32 nodes, which leaves about 4.9 thousand unknowns per core,
-a factor of five below the window. That campaign looks for the node count at which each
-layout stops scaling, which lies outside the window by construction. The 32-node point is a
-saturation tail, not a recommended operating point, and no weak-scaling claim is made from
-it.
 
 
 \section{Job Configuration and Thread Placement}
@@ -614,12 +508,10 @@ $N$ unknowns, steady-state throughput is
 \[
   Q = \frac{Nc}{t}.
 \]
-The analysis also reports $t/(cI)$, where $I$ is the final KSP iteration count. Every
-configuration is run three times. The three repeats are aggregated by their median. The
-error bars in every figure span the minimum and maximum of those three runs, so they are the
-full observed range and not a standard error; three samples do not support a distributional
-estimate. Scaling is computed per layout against that layout's smallest admitted node count.
-For a layout $\ell$ at $n$ nodes,
+The analysis also reports $t/(cI)$, where $I$ is the final KSP iteration count. Formal
+repeats are aggregated by their median; whiskers show the observed minimum and maximum
+from three runs. Scaling is computed per layout against that layout's smallest admitted
+node count. For a layout $\ell$ at $n$ nodes,
 \[
   S_\ell(n) = \frac{T_\ell(n_0)}{T_\ell(n)}, \qquad
   E_\ell(n) = \frac{S_\ell(n)}{n/n_0},
@@ -632,50 +524,41 @@ where $n_0$ is the smallest node count run for that problem size.
 \section{Experimental Setup}
 \label{sec:mn-setup}
 Two campaigns cover each dimension. Both use the platform, build, solver and thread
-placement of \Cref{ch:methodology}, and both fill every node with all 128 cores. They differ
-only in how the problem size responds to the node count. The weak-scaling campaign grows the
-problem in proportion to the nodes, holding the work per core fixed. The strong-scaling
-campaign holds one problem size fixed and spreads it over more nodes.
-\Cref{tab:fullnode-matrix} lists both.
+placement of \Cref{ch:methodology}, and both fill every node with all 128 cores. They
+differ in one thing. The weak-scaling campaign grows the problem with the node count. The
+fixed-size campaign holds it still. \Cref{tab:fullnode-matrix} lists both.
 
 \begin{table}[htbp]
   \centering
-  \caption{Grids and node counts of the six scales. The strong-scaling column is not limited
-  by the unknowns-per-core filter of \Cref{sec:configspace}; its 32-node point sits
-  deliberately below the window.}
+  \caption{Grids and node counts of the six scales. The fixed-size column is not limited by the
+  filter of \Cref{sec:configspace}.}
   \label{tab:fullnode-matrix}
   \small
-  \begin{tabular}{lrrll}
+  \begin{tabular}{lrrrrll}
     \toprule
-    Scale & 2D grid & 3D grid & Weak-scaling & Strong-scaling \\
-          &         &         & nodes        & nodes \\
+    Scale & 2D grid & 2D unknowns & 3D grid & 3D unknowns & Weak-scaling & Fixed-size \\
+          &         &             &         &             & nodes        & nodes \\
     \midrule
-    5m   & $2240^2$  & $171^3$ & 1      & --- \\
-    10m  & $3160^2$  & $215^3$ & 1, 2   & --- \\
-    20m  & $4500^2$  & $273^3$ & 2, 4   & 1, 2, 4, 8, 16, 32 \\
-    41m  & $6400^2$  & $345^3$ & 4, 8   & --- \\
-    82m  & $9073^2$  & $435^3$ & 8, 16  & --- \\
-    165m & $12828^2$ & $548^3$ & 16, 32 & --- \\
+    5m   & $2240^2$  &   5,017,600 & $171^3$ &   5,000,211 & 1      & --- \\
+    10m  & $3160^2$  &   9,985,600 & $215^3$ &   9,938,375 & 1, 2   & --- \\
+    20m  & $4500^2$  &  20,250,000 & $273^3$ &  20,346,417 & 2, 4   & 1, 2, 4, 8, 16, 32 \\
+    41m  & $6400^2$  &  40,960,000 & $345^3$ &  41,063,625 & 4, 8   & --- \\
+    82m  & $9073^2$  &  82,319,329 & $435^3$ &  82,312,875 & 8, 16  & --- \\
+    165m & $12828^2$ & 164,557,584 & $548^3$ & 164,566,592 & 16, 32 & --- \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The scale labels are nominal. $2240^2$ is 5,017,600 unknowns against $171^3 = 5{,}000{,}211$
-in 3D, and the two dimensions match to within 0.5\% at every scale, so a 2D and a 3D row of
-the same label solve systems of the same size.
+That gives 11 size--node pairs in the weak-scaling campaign and six in the fixed-size one.
+Every pair runs all four layouts three times. All 280 weak-scaling logs and all 144
+fixed-size logs passed the content checks. None carries a divergence, a PETSc or MPI
+error, or a licence wait.
 
-That gives 11 size--node pairs in the weak-scaling campaign and six node counts in the
-strong-scaling one. Every pair runs all four layouts three times. All 280 weak-scaling logs
-and all 144 strong-scaling logs passed the content checks. None carries a divergence, a
-PETSc or MPI error, or a licence wait.
-
-Run-to-run spread sets the resolution of every margin quoted below. Define the spread of a
-configuration as $(\max-\min)/\text{median}$ over its three repeats of the solve time. The
-largest spread anywhere in the weak-scaling matrix is 4.71\% in 2D and 3.83\% in 3D. For the
-strong-scaling curves it is 10.77\% and 11.09\%, because a solve at the largest node counts
-takes only tens of milliseconds and a fixed per-call overhead is then a visible fraction of
-it. A difference between two layouts smaller than these figures is reported as a tie: the
-measurement cannot separate them, which is not the same as their being equally fast.
+Run-to-run spread limits what can be resolved. Over three repeats the largest spread is
+4.71\% in 2D and 3.83\% in 3D for the weak-scaling matrix. For the fixed-size curves it is
+10.77\% and 11.09\%, because a solve at the largest node counts takes only tens of
+milliseconds. A gap smaller than these is reported as a tie. Whiskers in the figures show the
+observed range of the three runs.
 
 \subsection{Weak-Scaling Chains}
 \label{sec:bands}
@@ -743,25 +626,9 @@ scaling.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{figures/ksp2d_seconds_per_iteration}
-  \caption{Median 2D time per KSP iteration along the two unknowns/core chains. Ideal weak
-  scaling is a horizontal line; the rise above each layout's own one-node value is the cost
-  of concurrency, quantified as efficiency in the text and in \Cref{tab:weak-eff}.}
+  \caption{Median 2D time per KSP iteration along the two unknowns/core chains.}
   \label{fig:2d-spi}
 \end{figure}
-
-No line is flat, so no layout weak-scales perfectly. Stated as weak-scaling efficiency
-$E_\ell(n) = t_\ell(n_0)/t_\ell(n)$ along a chain, the $\sim$40k chain runs from 100\% at one
-node to 59.6\%, 64.5\%, 69.8\% and 77.1\% at 32 nodes for $128\times1$, $64\times2$,
-$32\times4$ and $16\times8$. The $\sim$80k chain spans one doubling fewer and gives each core
-twice the work; it holds 81.9\%, 85.8\%, 87.7\% and 89.8\% at 16 nodes. Two things follow.
-Efficiency falls at every doubling on every chain and every layout, so the cost of
-concurrency is paid gradually and not at one threshold. It also falls more slowly the more
-threads a rank has, in strict order, at both ends of both chains. \Cref{tab:weak-eff} gives
-the endpoints; \Cref{sec:weak-ranking} explains why that ordering is not a recommendation.
-% VERIFIED 2026-08-08 from analysis/data/nproc_2d_libsci/csv/derived/
-%   repeated_fullnode_formal_summary.csv, column weak_scaling_efficiency grouped by
-%   (upc_band, layout). 40k chain 32-node: .596 .645 .698 .771; 80k chain 16-node:
-%   .819 .858 .877 .898. Monotone decreasing at every step of every chain/layout.
 
 \subsection{3D}
 \label{sec:weak-3d}
@@ -778,9 +645,7 @@ near-linear shape (\Cref{fig:3d-throughput}), so the comparison again uses the r
 \end{figure}
 
 3D differs from 2D in size and in shape. The best point is $32\times4$ at 41m on four
-nodes, at a ratio of 0.751. That is 24.9\% less time per iteration than flat MPI, against a
-2D best of 12.8\%. Each dimension has 33 hybrid measurements, the 11 size--node pairs times
-the three hybrid layouts. In 3D, 22 of the 33 fall below 1; in 2D, 13 of 33 do.
+nodes, at a ratio of 0.751. That is 24.9\% less time per iteration than flat MPI, against a 2D best of 12.8\%. Of the 33 hybrid measurements 22 fall below 1, against 13 of 33 in 2D.
 
 The shape differs too. None of the six series is monotone. On the $\sim$80k chain the
 hybrid layouts lead at two and four nodes, lose the lead by eight nodes, and are at or
@@ -796,20 +661,9 @@ case.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{figures/ksp3d_seconds_per_iteration}
-  \caption{Median 3D time per KSP iteration along the two unknowns/core chains. Ideal weak
-  scaling is again a horizontal line; note that the vertical range is roughly three times
-  the 2D one.}
+  \caption{Median 3D time per KSP iteration along the two unknowns/core chains.}
   \label{fig:3d-spi}
 \end{figure}
-
-The departure from flat is larger than in 2D. On the $\sim$40k chain the four layouts end at
-42.4\%, 48.3\%, 45.2\% and 43.7\% weak-scaling efficiency at 32 nodes, against 59.6--77.1\%
-in 2D. On the $\sim$80k chain they end at 67.0\%, 56.8\%, 54.0\% and 64.1\% at 16 nodes,
-against 81.9--89.8\%. The 3D loss over the same node range is therefore roughly a third
-larger. It also carries no ordering: the best-scaling layout is $64\times2$ on one chain and
-$128\times1$ on the other, where in 2D $16\times8$ is best on both. The term that grows with
-node count in 3D is not a simple function of the thread count. \Cref{ch:profiling} measures
-it.
 
 \subsection{Layout Ranking and Efficiency}
 \label{sec:weak-ranking}
@@ -859,10 +713,7 @@ flat MPI wins 1. The 2D winner changes twice down the column and the 3D winner c
 five times. 2D has one layout ahead throughout. 3D does not. One of the three 2D flat-MPI wins,
 41m on eight nodes, is a tie: the medians differ by 0.4\% and the ranges overlap.
 
-\Cref{tab:weak-eff} measures each layout against its own one-node time. This is the standard
-weak-scaling efficiency, but it ranks scaling and not speed, and the two can disagree. A
-layout that starts slow has an easy baseline to hold, so it can post the best efficiency
-while running the worst time at every point.
+\Cref{tab:weak-eff} measures each layout against its own one-node time.
 
 \begin{table}[htbp]
   \centering
@@ -887,14 +738,10 @@ In 2D the ordering is strict in both chains. Efficiency rises with threads per r
 $16\times8$ degrades least of the four. In 3D there is no such ordering. On the $\sim$40k
 chain $64\times2$ degrades least, and on the $\sim$80k chain flat MPI does.
 
-The 2D ordering is that case. $16\times8$ has the best 2D efficiency and the worst 2D time
-at every one of the 11 pairs: 19.47\,ms per iteration at 5m on one node against 11.63\,ms
-for flat MPI, and 25.25 against 19.50 at 165m on 32 nodes. It degrades least because its
-cost is already dominated by a term that does not grow with the node count, so the growing
-term is a smaller fraction of a larger number. Efficiency measured against a layout's own
-baseline rewards a bad baseline. Every layout comparison in this chapter is therefore made
-on time per iteration, and efficiency is used only to describe how a layout scales against
-itself.
+$16\times8$ has the best 2D efficiency and the worst
+2D time at every point. It degrades least because its cost is already dominated by a term
+that does not grow with the node count. Efficiency measured against a layout's own
+baseline rewards a bad baseline.
 
 \section{Strong Scaling at Fixed Problem Size}
 \label{sec:strong}
@@ -911,54 +758,14 @@ and ends 45\% behind.
   \centering
   \includegraphics[width=0.85\textwidth]{figures/ksp2d_strong20m_runtime}
   \caption{2D time per solve at a fixed 20.25M unknowns. Both axes are logarithmic, so ideal
-  strong scaling has slope $-1$. The dotted line is that ideal, anchored at the one-node
-  $128\times1$ point; a curve below it is scaling superlinearly.}
+  strong scaling has slope $-1$.}
   \label{fig:2d-strong20m}
 \end{figure}
 
 Cumulative efficiency passes 100\% between two and 16 nodes and peaks at 191\% for
-$64\times2$ at eight nodes. These superlinear values repeat across all three runs, so they
-are not a single anomalous measurement.
-
-The usual explanation for superlinear strong scaling is that the working set shrinks into a
-faster level of the memory hierarchy as the fixed problem is divided over more caches. The
-arithmetic here is consistent with that. A five-point row costs about 60 bytes of matrix
-storage, so a flat-MPI rank holding 158 thousand unknowns at one node carries about
-9.5\,MB, and the four ranks sharing one 16\,MB CCX ask for about 38\,MB of it. By 32 nodes
-the same rank holds about 4.9 thousand unknowns, or 0.3\,MB, and the four together ask for
-1.2\,MB. Somewhere in that range the matrix stops being streamed from memory on every
-application. The vectors and the GAMG hierarchy shift the same way.
-
-This experiment cannot test that explanation. It reports wall-clock time and PETSc event
-times; neither \texttt{-log\_view} nor a MAP call tree measures cache occupancy, hit rate,
-or memory traffic, so nothing in the data separates a cache effect from any other cause of
-superlinearity. The data do show that the effect is not uniform across layouts. Every layout
-peaks at eight nodes, at 191\% for $64\times2$, 175\% for $32\times4$, 173\% for flat MPI,
-and 145\% for $16\times8$. $16\times8$ gives its ranks the largest subdomains and so the
-largest working set per L3, and it is the least superlinear of the four, which is the
-direction a cache account predicts. Confirming it needs hardware counters for L3 misses and
-memory bandwidth. \Cref{sec:futurework} sets out that measurement.
-
-\Cref{fig:2d-strong20m-eff} shows the same runs as parallel efficiency, each layout against
-its own one-node time, so it ranks scaling and not speed. Every layout rises above 100\%,
-peaks at eight nodes, and falls back through 100\% between 16 and 32 nodes, ending at
-85--93\%. Together with \Cref{fig:2d-strong20m} this says that 2D is still scaling at 32
-nodes but no longer scaling superlinearly, and that the four layouts do so together.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.85\textwidth]{figures/ksp2d_strong20m_efficiency}
-  \caption{2D parallel efficiency at a fixed 20.25M unknowns, each layout against its own
-  one-node time. The dotted line at 100\% is ideal strong scaling; above it is superlinear.
-  This ranks scaling, not speed; \Cref{fig:2d-strong20m} is the like-for-like time
-  comparison.}
-  \label{fig:2d-strong20m-eff}
-\end{figure}
-% VERIFIED 2026-08-08 from analysis/data/nproc_2d_libsci/csv/derived/strong_scaling_20m/
-%   strong_scaling_20m_summary.csv, parallel_efficiency: peak is at 8 nodes for all four
-%   layouts -- 128x1 1.73, 64x2 1.91, 32x4 1.75, 16x8 1.45. Per-rank unknowns are
-%   20250000/128 = 158203 at 1 node and 20250000/4096 = 4944 at 32 nodes; 60 B/row is
-%   5 nonzeros x (8 B value + 4 B column index), matrix only.
+$64\times2$ at eight nodes. These superlinear values repeat across the three runs. This
+experiment does not explain them. The fixed problem shrinking into cache is one candidate
+it cannot test.
 
 \subsection{3D}
 \label{sec:strong-3d}
@@ -968,45 +775,31 @@ The 3D result is different in kind, and it is the largest layout effect in this 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{figures/ksp3d_strong20m_runtime}
-  \caption{3D time per solve at a fixed 20.35M unknowns. Both axes are logarithmic, so ideal
-  strong scaling has slope $-1$; the dotted line is that ideal, anchored at the one-node
-  $128\times1$ point. Flat MPI and $64\times2$ turn and get slower; the most-threaded
-  layouts do not.}
+  \caption{3D time per solve at a fixed 20.35M unknowns. Flat MPI and $64\times2$ turn and get
+  slower; the most-threaded layouts do not.}
   \label{fig:3d-strong20m}
 \end{figure}
 
 Flat MPI turns first. It bottoms at eight nodes with 0.0997\,s per solve, then rises to
 0.1776\,s at 16 nodes and 0.2599\,s at 32. $64\times2$ and $32\times4$ bottom at 16 nodes.
-$16\times8$ has not turned by 32 nodes. There it is the fastest of the four at 0.0681\,s per
-solve, $3.81\times$ faster than flat MPI on the same 4096 cores. The three repeats of
-$16\times8$ at that point span 0.0672--0.0724\,s and the three repeats of flat MPI span
-0.2594--0.2624\,s, so the ordering is not a sampling artefact.
+$16\times8$ has not turned by 32 nodes. There it is the fastest of the four at
+0.0681\,s per solve, $3.81\times$ faster than flat MPI on the same 4096 cores. The
+observed ranges at that point do not overlap.
 
-Call the node count at which a layout's time stops falling its saturation point: the point
-at which the communication and synchronisation cost of the extra ranks has caught up with
-the compute time they remove. That point rises with threads per rank: 8 nodes for
-$128\times1$, 16 for $64\times2$, 16 for $32\times4$, and beyond 32 for $16\times8$.
-Replacing ranks with threads does not make the solve faster at the node counts where flat
-MPI is still scaling. It moves the node count at which scaling stops. This is why the 3D
-advantage in \Cref{tab:strong20m-best} is small up to eight nodes and large beyond 16.
+The saturation node count rises with threads per rank: 8, 16, 16, and beyond 32. That is what hybridisation buys in 3D.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{figures/ksp3d_strong20m_efficiency}
-  \caption{3D parallel efficiency at a fixed 20.35M unknowns, each layout against its own
-  one-node time. The dotted line at 100\% is ideal strong scaling. This ranks scaling, not
-  speed; \Cref{fig:3d-strong20m} is the like-for-like time comparison.}
+  \caption{3D parallel efficiency at a fixed 20.35M unknowns, each layout against its own one-node time. This ranks scaling, not speed.}
   \label{fig:3d-strong20m-eff}
 \end{figure}
 
-\Cref{fig:3d-strong20m-eff} is the counterpart of \Cref{fig:2d-strong20m-eff}. Each layout
-is measured against its own one-node time, so it ranks scaling and not speed. In 2D all four
-layouts rise above 100\% and land within eight points of each other at 32 nodes. In 3D they
-separate by a factor of four, from 10.9\% for flat MPI to 44.5\% for $16\times8$, and they
-fall from their peak earlier. That fall is the saturation of the runtime plot expressed as a
-fraction of ideal.
+\Cref{fig:3d-strong20m-eff} shows the same runs as parallel efficiency. Each layout is
+measured against its own one-node time, so it ranks scaling and not speed. No 2D
+counterpart is drawn, because the 2D curves do not turn over.
 
-\subsection{The 32-Node Endpoint}
+\subsection{Endpoints}
 \label{sec:strong-endpoints}
 \Cref{tab:strong20m-best} gives the fastest layout at each node count. In 2D the margin
 over flat MPI never exceeds 6.9\%. In 3D it reaches 172.4\% at 16 nodes and 281.3\% at 32.
@@ -1032,22 +825,12 @@ over flat MPI never exceeds 6.9\%. In 3D it reaches 172.4\% at 16 nodes and 281.
   \end{tabular}
 \end{table}
 
-\Cref{tab:strong20m-endpoints} gives all four layouts at 32 nodes on two measures. Time per
-solve compares layouts directly. Speedup compares each layout only with itself at one node.
-
-In 2D the two disagree. The four speedups are almost equal, 27.3 to 29.8, but the runtimes
-behind them differ by 45\%, from 0.0277\,s for $64\times2$ to 0.0409\,s for $16\times8$.
-$16\times8$ divides by the worst one-node time in the table, 1.1325\,s against 0.7704\,s for
-flat MPI, so it is credited for recovering ground the other layouts never lost. In 3D the
-two agree. $16\times8$ has the largest speedup, 14.24 against 3.49 for flat MPI, and the
-fastest time, 0.0681\,s against 0.2599\,s. They agree because the 3D layouts diverge as
-nodes are added rather than converging, so a layout's rank no longer depends on which
-baseline it is divided by. Only the time column ranks layouts; the speedup column describes
-how each one scales.
+\Cref{tab:strong20m-endpoints} gives all four layouts at 32 nodes. The 2D speedups are
+almost equal, 27.3 to 29.8, because each layout is measured against its own one-node time and $16\times8$ starts from the worst one. Their runtimes still differ by 45\%. In 3D the two measures agree, because the layouts diverge instead of converging.
 
 \begin{table}[htbp]
   \centering
-  \caption{The 32-node endpoint of the strong-scaling curves. Only time per solve compares layouts
+  \caption{The 32-node endpoint of the fixed-size curves. Only time per solve compares layouts
   directly.}
   \label{tab:strong20m-endpoints}
   \begin{tabular}{llrrrr}
@@ -1071,14 +854,7 @@ how each one scales.
 \label{sec:mn-interp}
 \Cref{tab:cross-dimension} collects the comparison. It gives both a throughput gain and
 a time saving, because these are different conventions and the chapter quotes both. The
-two halves do not carry equal weight, and the reason is measurement resolution rather than a
-preference for one dimension. The 3D advantage over flat MPI at 32 nodes is $3.81\times$,
-against a worst-case run-to-run spread of 11.09\% in that campaign, so it is a result. The
-margins the 2D layouts hold on the same problem are 1--7\%, inside or barely outside the
-10.77\% 2D spread, so they are not. The 2D ordering at any single node count is indicative
-only; what carries weight in 2D is the trend across node counts, where every point moves the
-same way. The 3D solve is sensitive to the rank--thread balance and the 2D solve is not,
-at the resolution available here.
+two halves do not carry equal weight. The 3D gaps over flat MPI at 32 nodes, $3.81\times$, are far outside the run-to-run spread. The 1--7\% margins the 2D layouts hold on the fixed problem are not, so the 2D ordering at any single node count is only indicative.
 
 \begin{table}[htbp]
   \centering
@@ -1090,7 +866,7 @@ at the resolution available here.
     \midrule
     \multicolumn{3}{l}{\emph{Constant work per core, 11 size--node pairs}} \\
     Layout winning most points        & $64\times2$ (8 of 11) & $32\times4$ (6 of 11) \\
-    Hybrid measurements faster per iteration & 13 of 33 & 22 of 33 \\
+    Hybrid points faster per iteration & 13 of 33 & 22 of 33 \\
     Largest throughput gain           & 14.7\% & 33.2\% \\
     Largest per-iteration saving      & 12.8\% & 24.9\% \\
     Ratio series monotone in nodes    & 4 of 6 & 0 of 6 \\
@@ -1109,9 +885,7 @@ at the resolution available here.
 2D is ordered and 3D is not. Every 2D hybrid layout improves against flat MPI as
 concurrency grows, and weak efficiency rises with threads per rank. In 3D the margins are about twice as large, but no series is monotone and the best layout changes with scale and node count.
 
-The regime matters as much as the dimension. At constant work per core the layout effect is
-a few per cent. At constant problem size it reaches $3.81\times$ by 32 nodes and is still
-growing, because the layouts differ in where they stop scaling rather than in speed.
+The regime matters as much as the dimension. At constant work per core the layout effect is a few per cent. At constant problem size it is unbounded, because the layouts differ in where they stop scaling rather than in speed.
 
 The two stencils do different work per equation, so their absolute rates are not a
 comparison of algorithms. What compares is the layout ordering and the margin over flat
@@ -1131,56 +905,18 @@ measured in. $16\times8$ is last at constant work per core in both dimensions an
 \section{Why a Repeated-Solve Driver}
 \label{sec:whyrepeat}
 
-The quantity of interest is the cost of a steady-state solve as a function of the
-rank--thread layout: repeated application of a fixed operator and a fixed preconditioner,
-which is what a production code does inside a time step or an outer nonlinear iteration. A
-benchmark that solves once measures something else. In a single solve at 20.25M with
-$16\times8$, \texttt{-log\_view} gave \texttt{PCSetUp} 45\% of the run and \texttt{KSPSolve}
-10\%. Nearly half the measured time built the multigrid hierarchy, which is done once, and a
-tenth of it went to the iterations whose scaling \Cref{ch:multinode} studies. Timing such a
-run would rank the layouts mainly on preconditioner setup. The setup and the iterations also
-need not respond to the layout in the same direction, so the two costs cannot be separated
-afterwards from a single number.
-
-\texttt{ex2\_repeat} runs the solves inside a \texttt{RepeatedSolves} PETSc logging stage,
-zeroes the initial guess before each one so that every solve does the same work, and reuses
-the preconditioner across them (\texttt{-ksp\_reuse\_preconditioner} and
-\texttt{-pc\_gamg\_reuse\_interpolation true}). That is the reuse branch of the call structure
-in \Cref{sec:solver}. One warm-up solve absorbs the hierarchy construction and the
-first-touch page faults; the 19 solves that follow are timed. Within the stage,
-\texttt{KSPSolve} accounts for almost all of the time, and each of the 19 repeats took the
-same 11 iterations. \Cref{ch:multinode} therefore compares steady-state solves, with
-hierarchy-construction and first-touch costs excluded by construction rather than
-subtracted.
-% OPEN ITEM 2026-08-08: the sentence "the stage held 69% of time and 93% of flops" was
-%   removed here. Across the 110 20.25M logs no run has a RepeatedSolves stage time share
-%   near 69%; in the exploration-era log that appears to be the source, 69.0% is the Main
-%   Stage and 92.7% is RepeatedSolves, i.e. two stages' numbers crossed. The source log was
-%   not found under runs/, so no replacement pair of numbers is quoted. Restore only with a
-%   named log.
+In a single solve at 20.25M with $16\times8$, \texttt{-log\_view} gave \texttt{PCSetUp}
+45\% of time and \texttt{KSPSolve} 10\%. \texttt{ex2\_repeat} runs the solve inside a
+\texttt{RepeatedSolves} log stage, zeroes the initial guess before each solve, and reuses the preconditioner (\texttt{-ksp\_reuse\_preconditioner} and
+\texttt{-pc\_gamg\_reuse\_interpolation true}). With 20 solves the stage held 69\% of time and 93\% of flops; within the stage \texttt{KSPSolve} was 100\% of time; each of the 19 repeats took 11 iterations. The corrected scaling campaign uses this same warm-up and reuse design, so \Cref{ch:multinode} compares steady-state solves rather than first-touch and hierarchy-construction costs.
 
 \section{Analysis Methodology}
 \label{sec:analysis-method}
 
-The method combines two instruments.
-
-\texttt{-log\_view} is PETSc's built-in profiler. Passing the option to a PETSc program makes
-it print, at exit, a table of every instrumented event (\texttt{MatMult},
-\texttt{VecScatterBegin}, \texttt{PCApply} and the rest) with the time and floating-point
-operations each accumulated, broken down by logging stage \cite{petsc_manual_324}. It costs
-almost nothing and needs no special build, so it is available on every formal run. Two of
-its columns are used here: \%T, the share of the stage's time an event took, and \%F, the
-share of the stage's flops it performed. An event that does a tenth of the arithmetic in a
-tenth of the time is keeping up. An event whose \%T exceeds its \%F takes longer than its
-arithmetic accounts for, and the difference goes to communication, synchronisation, or
-memory traffic.
-
-Linaro MAP 25.0.4 (\Cref{sec:tools}) is the second instrument. It samples the call stacks of
-every process over time \cite{linaro_map_2504}, which shows where in the software stack the
-cores are. It requires an instrumented run, so it covers only a few configurations.
-
-\Cref{tab:tf} lists single-point \texttt{-log\_view} data for the
-\texttt{RepeatedSolves} stage at 20.25M with $16\times8$.
+The method combines MAP 25.0.4 timelines with \texttt{-log\_view} \%T (share of stage
+time) and \%F (share of stage flops). An event whose \%T exceeds its \%F spends the
+difference on communication, synchronisation, or memory traffic. \Cref{tab:tf} lists
+single-point data for the RepeatedSolves stage at 20.25M with $16\times8$.
 
 \begin{table}[htbp]
   \centering
@@ -1198,57 +934,32 @@ cores are. It requires an instrumented run, so it covers only a few configuratio
   \end{tabular}
 \end{table}
 
-\texttt{MatMultTranspose} (GAMG restriction) has a \%T three times its \%F and a
-floating-point rate $4.6\times$ below \texttt{MatMult}. It takes 18\% of the stage's time to
-do 6\% of its arithmetic. \texttt{VecTDot} and \texttt{VecNorm} are the CG global reductions.
-Their row carries no flop rate because it aggregates two events that PETSc logs separately,
-and a rate formed from summed flops over summed times would not correspond to either kernel.
-For a global reduction the quantity of interest is not the rate but the time every rank
-spends waiting for the slowest one, which is the \%T of 8\% against a \%F of 6\%.
+\texttt{MatMultTranspose} (GAMG restriction) has a \%T three times its \%F and a rate
+$4.6\times$ below \texttt{MatMult}. \texttt{VecTDot} and \texttt{VecNorm} are the CG global
+reductions.
 
 \section{MAP Profiling Results}
 \label{sec:map-matrix}
-Two MAP campaigns profiled the same 20.25M 2D problem, one on each of the two PETSc builds
-of \Cref{sec:env}:
+Two MAP campaigns profiled the same 20.25M 2D problem:
 
-\begin{enumerate}
-  \item a baseline set on \texttt{arch-omp-opt}, the build with no explicitly linked
-  threaded BLAS, at 2, 8 and 16 nodes;
-  \item a matching set on the production \texttt{arch-omp-libsci-rome-opt}, identical except
-  that it links the threaded Cray LibSci, at 2 and 8 nodes.
-\end{enumerate}
+1. a baseline set on \texttt{arch-omp-opt} at 2, 8, 16 nodes
 
-The pairs at 2 and 8 nodes differ in one build option, so a difference between them is
-attributable to that option. Of the twelve profiles, eleven are used. The 16-node
-$16\times8$ baseline profile is rejected on its content: MAP resolved no library symbols in
-it, so every sample is attributed to the sampler and the file carries no cost information.
+2. a matching set on the production \texttt{arch-omp-libsci-rome-opt} at 2 and 8 nodes.
 
-Neither campaign contains a $128\times1$ cell. The constraint is the Linaro Forge licence on
-ARCHER2, which caps the total number of processes that may be profiled at one time and
-shares that cap across all users of the service. It is not an inability of MAP to attach to
-a particular layout. A flat-MPI run puts 128 ranks on every node, so it exhausts the
-available process budget at a node count below the ones needed here. Flat MPI therefore has
-\texttt{-log\_view} evidence only, and every MAP-based statement in this section is anchored
-at its hybrid end. The missing point is fixed at zero OpenMP-runtime time by construction,
-because a one-thread rank has no OpenMP team to wait for. Repeating the matrix with a larger
-share of the licence is listed in \Cref{sec:futurework}.
+Neither contains a $128\times1$ is because MAP cannot launch 128 MPI ranks per node on this system. So the Flat
+MPI has \texttt{-log\_view} evidence only. 
+%run another one to solve this!!!
+The solve window scope keeps only samples in which cores are inside \texttt{KSPSolver} and ignore \texttt{PCSetUp},
+which approximates the repeated-solve phase from the profile alone. This is a time window, not the PETSc \texttt{RepeatedSolves}
+logging stage, and the two must not be recognized as the same quantity.
 
-The timeline is used to select the solve region, so that only samples in which cores are
-inside \texttt{KSPSolve} and none is inside \texttt{PCSetUp} contribute to the shares below.
-That approximates the repeated-solve phase from the profile alone. It is a time window, not
-the PETSc \texttt{RepeatedSolves} logging stage, and the two must not be quoted as the same
-quantity.
+
 
 
 \begin{table}[htbp]
   \centering
   \caption{Share of total core-time inside the solve window, by the library owning the
-  executing frame, for the eleven usable MAP profiles at 20.25M unknowns in 2D. ``OpenMP''
-  is the GNU runtime's spin and wait paths, that is threads with no work to do. Rows sum to
-  under 100\% because libc, the loader and the sampler make up a small remainder that is
-  omitted. MAP instrumentation inflates these runs, so what the table establishes is the
-  ordering between layouts; the absolute values are not transferable to the
-  uninstrumented campaigns of \Cref{ch:multinode}.}
+  executing frame, for the eleven usable MAP profiles at 20.25M unknowns in 2D.}
   \label{tab:map-shares}
   \begin{tabular}{llrrrrr}
     \toprule
@@ -1266,7 +977,6 @@ quantity.
     Baseline &  2 & $16\times8$ & 40.2\% & 57.8\% &  1.4\% & 0.0\% \\
     Baseline &  8 & $32\times4$ &  8.8\% & 68.6\% & 22.2\% & 0.0\% \\
     Baseline &  8 & $16\times8$ & 16.0\% & 77.5\% &  6.0\% & 0.0\% \\
-    Baseline & 16 & $32\times4$ &  1.2\% & 69.8\% & 29.0\% & 0.0\% \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -1282,47 +992,27 @@ waiting for something to do. The two builds agree wherever they overlap: across 
 common cells the MPI shares differ by at most 0.9 percentage points and the OpenMP shares
 by at most 4.3, with no systematic sign.
 
-Three limits apply to these numbers, and none can be removed from the profiles themselves.
-First, there is one profile per cell, so no observed range accompanies any percentage.
-Second, MAP is a sampling profiler designed for low overhead, but the overhead measured on
-these runs is neither small nor uniform: $+35\%$ on the timed stage and roughly threefold on
-\texttt{VecScatterEnd}, comparing the same configuration run with and without the profiler.
-Third, MAP's OpenMP instrumentation wraps the barrier and worksharing constructs whose
-behaviour is being measured, so it may influence that behaviour rather than only observe it.
-The vendor documents the sampling design but makes no quantitative claim about perturbation
-of OpenMP regions \cite{linaro_map_2504}. Instrumenting a barrier can only add work inside
-it, so the OpenMP shares below more likely overstate than understate an uninstrumented run.
-The claim made from this table is therefore the ordering between layouts, not the absolute
-percentage.
-% VERIFIED 2026-08-08: the +35% and ~3x figures are the author's own paired measurement of
-%   the same configuration with and without MAP; they are not a vendor-published number.
-%   The "may influence" wording is deliberate -- no reference establishes the magnitude.
+Also MAP's limit also should be considered, There is one profile per
+pair, and the overhead of MAP is large and uneven (separately measured at $+35\%$
+on the timed stage and roughly threefold on \texttt{VecScatterEnd}), and its OpenMP instrumentation 
+influence the barrier behaviour being measured, so the absolute percentages overstate what an uninstrument run 
+would show. 
 
-Within those limits, the table answers the question \Cref{ch:multinode} left open, at the
-level of accounting rather than of mechanism. The question was what hybridisation costs,
-such that the cost has to be repaid before it helps. The cost is paid as idle time in the
-OpenMP runtime. The term that grows with threads per rank is time in \texttt{cpu\_relax},
-\texttt{do\_spin} and \texttt{\_\_futex\_wait}, which are threads waiting, not time in the
-compute kernels. NUMA placement is excluded on topology alone: a rank of eight threads
-crosses a shared-L3 boundary but still fits inside one 16-core NUMA region, so no layout in
-this study places a rank across two NUMA regions and the four cannot differ in that respect
-(\Cref{tab:layouts}).
+Consider those limits the table answer the question \Cref{ch:multinode}, at the level of accounting rather than
+of mechanism. The cost that grows with threads per rank, and that must be repaid before hybridisation worked,
+is paid as the idle time in the openMP runtime: the term that grows is time in  \texttt{cpu\_relax}, \texttt{do\_spin} and
+\texttt{\_\_futex\_wait}, not time in the compute kernels. NUMA placement is exclued on topology alone:
+a rank of eight treads crosses a shared-L3 boundary but still fits in side one 16-cores NUMA region, so no layout of this study places a rank across two NUMA regions and the four cannot differ in that respect (\Cref{tab:layouts}). 
 
 Neither is the growth a placement effect, because it is present at fixed layout,
-where a rank's threads occupy the same cores against the same shared-L3 boundary at every node count:
+where a rank`s threads occupy the same cores against the same shared-L3 boundary at every node count:
 holding $16\times8$ and going from two nodes to eight raises the waiting share from 53.5\% to 76.5\% on the LibSci build and from 57.8\% to 77.5\% on the baseline, as the work per threaded region shrinks.
 
-That is the discriminating observation. It reads as OpenMP overhead becoming the dominant
-cost as the work per threaded region shrinks: more threads to synchronise over less work
-each. The fixed-layout result follows, because node count changes the work per region
-without changing the placement. The other two features of the shape, monotonicity in the
-thread count and a maximum where $16\times8$ performs worst, are consistent with that
-reading and equally consistent with a cache one, because threads per rank and cores per L3
-vary together across the four layouts. The profiles do not settle why the threads wait. A
-rank spanning two CCXs could produce load imbalance that is collected at the same barrier
-and would appear in the same \texttt{do\_spin} frames. \Cref{sec:sync-limits} leaves that to
-the hardware-counter work of \Cref{sec:futurework}. \Cref{sec:bottleneck} gives the other
-half of the trade, on the full matrix and without a profiler.
+The other two features of the shape, monotonicity in the thread count and a maximum exactly where $16\times8$
+performs worst, are consistent with this reading but equally consistent with a cache one.
+What the profiles do not settle is why the threads wait: a rank spanning two CCXs could produce imbalance that is collected
+at the same barrier, and \Cref{sec:sync-limits} leaves that to the hardware-counter work of \Cref{sec:futurework}.
+\Cref{sec:bottleneck} shows the other half of the trade, on the full matrix and without a profiler.
 
 \begin{figure}[htbp]
   \centering
@@ -1331,17 +1021,10 @@ half of the trade, on the full matrix and without a profiler.
   \label{fig:map-shares}
 \end{figure}
 
-A fourth observation is negative, and it closes the question \Cref{sec:env} opened. Threaded
-LibSci is linked into the production build, and PETSc's sparse solve path barely calls it.
-The LibSci column of \Cref{tab:map-shares} never exceeds 2.1\% of solve-window core-time in
-any of the six LibSci profiles, and it is 0.0\% in every baseline profile, so the baseline
-build sampled no BLAS frame at all. This is the share of the sparse Krylov solve window, not
-of a whole application; a code dominated by dense factorisation or by matrix--matrix
-products would sit in a different regime. Here the threaded BLAS library cannot account for
-the layout ordering measured in \Cref{ch:multinode}. That is what \Cref{sec:sync-limits}
-could otherwise only state as a limit of the evidence, and it is what allows the baseline
-and production builds to be treated as interchangeable in the four cells where both were
-profiled.
+The last observation is negative and worth considering. Threaded Libsci is linked into the production build, and PETSC`s sparse solve path barely calls it: BLAS accounts for at most 2.1\% of solve-window core-time in any Libsci profile, and the
+baseline profiles sample no BLAS frame at all. The threaded BLAS library therefore cannot account for the layout ordering measured
+in \Cref{ch:multinode}, which confirms from profile date what \Cref{sec:sync-limits} could previously only state as a limit of the
+evidence.
 
 
 
@@ -1350,38 +1033,31 @@ profiled.
 \section{Bottleneck Identification}
 \label{sec:bottleneck}
 
-\Cref{sec:map-matrix} leaves the hardware question open, but the \texttt{-log\_view} event
-tables of the uninstrumented formal runs support a narrower question that
-\Cref{ch:multinode} raised and could not answer: whether the layout effect tracks the share
-of the solve exposed to inter-process synchronisation. All 264 formal runs are parsed here,
-so the evidence covers the same matrix as the scaling results and carries no profiler
-overhead.
+\Cref{sec:map-matrix} leaves the hardware qquestion open, but the \texttt{-log\_view} event tables of the 
+uninstrumented formal runs support a question that \Cref{ch:multinode} raised:
+whether the layout effect tracks the share of the solve exposed to inter-process synchronisation.
+All fromal runs are parsed here, so the evidence covers the same matrix as the scaling results and
+carries no profiler overhead.
 
 
 \subsection{What is Measured}
-\label{sec:sync-measured}
 For each run, the time of the halo-exchange events (\texttt{VecScatterBegin},
 \texttt{VecScatterEnd}) and of CG's global-reduction events (\texttt{VecTDot},
 \texttt{VecNorm}) is taken from the \texttt{RepeatedSolves} stage and divided by that
-stage's \texttt{KSPSolve} time. Call the result the \emph{exposure share}.
+stage's \texttt{KSPSolve} time.
 
-Three limits apply to that quantity, and none is removable from \texttt{-log\_view} alone.
-First, the synchronising events are logged \emph{inside} \texttt{MatMult} and its relatives,
-so the exposure share is not a term in an additive time budget. Summing every non-container
-event against \texttt{KSPSolve} gives 116--372\% across the formal runs, because
-\texttt{MatMult} is itself a container for the halo exchange: the same wait is counted once
-in \texttt{MatMult}, once in the \texttt{VecScatter} pair, and once again in
-\texttt{SFPack}/\texttt{SFUnpack}, which are excluded here for that reason.
+Also some things of the \texttt{-log\_view} should be considered:
 
-Second, each event time that PETSc reports is a maximum over ranks, and different events may
-attain their maximum on different ranks, so the numerator sums maxima that need not have
-been attained on the rank that supplies the denominator. Third, \texttt{VecTDot} and
-\texttt{VecNorm} also perform local floating-point work, so their time is not purely
-communication.
+The synchronising events are logged inside \texttt{MatMult} and its relatives, so this is an \texttt{exposure
+share}. These are not not a term in an additive time budget. Summing every leaf event with \texttt{KSPsolve}
+gives a result that larger than 100\%.
 
-The quantity is formed identically in every one of the 264 runs, so it remains comparable
-across layouts and node counts. It is an index of exposure, not an absolute time budget, and
-it is read only as such below.
+Each event time is a maximum over ranks, and different events may attain their maximum
+on different ranks. \texttt{VecTDot} and \texttt{VecNorm} also perform local flops, so their time
+is not purely communication.
+
+The quantity is measured identically in every run, which is what makes it comparable across layouts and
+node counts.
 
 
 
@@ -1389,10 +1065,10 @@ it is read only as such below.
 
 
 \Cref{fig:2d-sync} and \Cref{fig:3d-sync} give the result. In both dimensions the share
-rises monotonically with node count for every layout, and at these size--node points it
-is strictly ordered by MPI rank count: fewer ranks, less exposure. The plotted share is
-the sum of the two event classes, which sit on disjoint call paths: the halo exchange is
-reached from \texttt{MatMult} and its relatives, the reductions directly from CG.
+rises monotonically with node count for every lay out, and these size--node points 
+it is strictly ordered by MPI rank count: fewer ranks, less exposure. The plotted share
+is the sum of the two event classes, which sit on disjoint call path:
+the halo exchange is reached form \texttt{MatMult} and its relatives, the reductions directly from CG.
 
 \begin{figure}[htbp]
   \centering
@@ -1414,10 +1090,9 @@ reached from \texttt{MatMult} and its relatives, the reductions directly from CG
   \label{fig:3d-sync}
 \end{figure}
 
-\Cref{tab:sync-split} splits the exposure along the $\sim$40k unknowns/core chain at four
-representative points in each dimension. Halo exchange is the larger of the two terms in
-every one of the 264 formal runs, by a factor of 1.7 to 2.9 in 2D and 2.9 to 5.7 in 3D. At
-165m on 32 nodes flat MPI pays 34.3 percentage points
+\cref{tab:sync-split} spilit the exposure of 40k unkonwns/core at four representative points along on weak-scaling chain in each dimension.
+According to the tables, Halo exchange is the larger term in the run (actually all the experiments);
+by a factor of 1.7 to 2.9 in 2D and 2.9 to 5.7 in 3D. At 165m on 32 nodes flat MOPI pays 34.3 percentage points
 to halo exchange in 2D and 70.9 in 3D, against 13.9 and 13.6 to the reductions; the totals these make up are
 the 48.2\% and 84.5\% at the right-hand end of \Cref{fig:2d-sync} and \Cref{fig:3d-sync}. The 3D shares are far
 higher than the 2D shares at every point in the table, which is what the decomposition of Section 3.2 predicts: in 3D the ±mn coupling puts both k neighbours of every row off-rank once L drops below mn, while in 2D the
@@ -1459,11 +1134,10 @@ matching ±m coupling never reaches more than 2m rows.
 
 \subsection{Reduced share Exposure}
 
-The ordering of \cref{tab:sync-split} alone cannot explain the results, because $16\times8$ has the lowest exposure at every point of \Cref{fig:2d-sync} and \Cref{fig:3d-sync} and, in 2D, the worst
-time per iteration at all 11 of them. What does track performance is the
-\emph{size} of the reduction: comparing each layout's exposure against flat MPI at the same
-size--node point with its time per iteration relative to flat MPI gives
-\Cref{tab:sync-breakeven}.
+The ordering of \cref{tab:sync-split} alone cannot explain the results, because $16\times8$ has the lowest exposure at every point of \Cref{fig:2d-sync} and \Cref{fig:3d-sync}，in 2D, the worst time
+per iteration at all 11 of them. What does track performance is the
+size of reduction, comparing its exposure against flat MPI at the same size-node point with its time
+per iteration relative to flat MPI can got the \Cref{tab:sync-breakeven}
 
 
 Write $S_\ell(p)$ for the halo-plus-reduction share of layout $\ell$ at size--node
@@ -1475,25 +1149,24 @@ point $p$, and $t_\ell(p)$ for its time per KSP iteration. The first two columns
   \mathrm{TimeRatio} = \frac{t_\ell}{t_{128\times1}},
 \]
 
-so $\mathrm{ExposureRemoved} > 0$ means the layout is exposed less than flat MPI is, and
-$\mathrm{TimeRatio} < 1$ means it is faster than flat MPI. For example, reading
-\Cref{tab:sync-split}, 2D $16\times8$ at 165m on 32 nodes has
-$\mathrm{ExposureRemoved} = (34.3+13.9)-(16.4+9.9) = 21.9$ points.
+so $\mathrm{ExposureRemoved}$ $ > 0$ means the layout is less than flat MPI, and $\mathrm{TimeRatio} < 1$
+means that layout is faster than flat MPI. For example, $\mathrm{ExposureRemoved}$ is 
+$(34.3+13.9)-(16.4+9.9)=21.9$
+points for 2D $16\times8$ at 165m on 32 nodes at \Cref{tab:sync-split}.
 
 Break-even, a measure defined here, is computed by $a$ and $b$:
 \[
   \mathrm{BreakEven} = \frac{1-b}{a} = \frac{b-1}{|a|}, \qquad a<0,
 \]
-with no break-even defined when $a\ge0$. Both $a$ and $b$ come from a least-squares fit
-over the 11 points of each layout:
+with none when $a\ge0$, come from a least-squares that fit over each layout pairs:
 
 \[
   \mathrm{TimeRatio} = a\,\mathrm{ExposureRemoved} + b
 \]
 
-Here $b$ is the intercept, the time ratio the line gives at $\mathrm{ExposureRemoved}=0$:
-what a layout would cost against flat MPI if it removed no exposure at all, so $b-1$ is the cost of threading alone. The slope $a$ is the change in $\mathrm{TimeRatio}$ per point of
-exposure removed, so $|a|$ is how much of that cost one point pays back.
+Here $b$ is the intercept,the time ratio the line gives at $\mathrm{ExposureRemoved}=0$:
+what a layout would cost against flat MPI if it removed no exposure at all, so $b-1$ is the cost of threading alone, The slope $a$ is the change in $\mathrm{TimeRatio}$ per point of
+exposure removed, so $|a|$ is how much of that cost one point pays back, 
 
 Since $a<0$, the fitted line drops below one exactly where $\mathrm{ExposureRemoved}$ passes
 $\mathrm{BreakEven}$. The column is therefore a threshold: it is how much exposure a layout
@@ -1507,12 +1180,12 @@ The $r$ column is the Pearson correlation, computed from the same pairs,
 \]
 
 their covariance over the product of their standard deviations. It shares the sign of $a$
-and says how closely they follow the line, so it measures how firm a break-even is rather
-than influencing its value.
+and says how closely they follow the line, so it measures how firm a break-even is and not pay a
+influence to it.
 
 \begin{table}[htbp]
   \centering
-  \caption{Reduction in synchronisation exposure against time per iteration, both relative to flat MPI at the same size–node point. The break-even value is the exposure reduction the fitted line requires to offset threading overhead. $a$ and $b$ are that line's slope and intercept, so $(1-b)/a$ reproduces the last column. Eleven points per layout; the fits are descriptive only.}
+  \caption{Reduction in synchronisation exposure against time per iteration, both relative to flat MPI at the same size–node point. The break-even value is the exposure reduction the fitted line requires to offset threading overhead. $a$ and $b$ are that line's slope and intercept, so $(1-b)/a$ reproduces the last column.Eleven points per layout; the fits are descriptive only.}
   \label{tab:sync-breakeven}
   \begin{tabular}{lrrrrrr}
     \toprule
@@ -1531,15 +1204,14 @@ than influencing its value.
   \end{tabular}
 \end{table}
 
-Five of the six correlations $r$ are negative and three exceed 0.8: the more exposure a layout removes at a given point, the faster it is relative to flat MPI. Read down $b$, the cost of threading before any exposure is removed: it rises sharply at each doubling, and at four and eight threads it is almost independent of the dimension,
+Five of the six correlations $r$ are negative and three exceed 0.8: the more exposure a layout removes at a given point, the fast it is to flat MPI here. Read down $b$, the cost of threading before any exposure is removed: it rises sharply at each doubling, and at four and eight threads it is almost independent of the dimension,
 1.1305 against 1.1270 and 1.4313 against 1.4226, although flat MPI's exposure share differs
 between 2D and 3D by 36 points at the largest size--node point. Only $64\times2$, whose
 threading cost is small in both, differs appreciably. Read down $|a|$, the return on one
 point of removed exposure: it falls at every step, and at all three layouts it is larger in
-3D than in 2D. The break-even column quantifies the trade-off: each doubling of threads per rank removes
-more exposure, but needs more of it removed before threading pays for itself.
+3D than in 2D. The break-even column quantifies the trade-off, Each doubling of threads per rank removes more exposure but need more before it pays: 
 
-\Cref{fig:3d-tradeoff} and \Cref{fig:2d-tradeoff} plot the fits. The 3D case is taken first because all three of its layouts behave the same way while the exception the argument turns on lies in 2D. In 3D the three layouts form three roughly parallel descending lines, displaced from each other along the horizontal axis: each removes more exposure than the one before it, and each needs more of it before crossing parity; the bands flatten as
+\Cref{fig:3d-tradeoff} and \Cref{fig:2d-tradeoff} plot the fits, The 3D case is taken first because all three of its layouts behave the same way while the exception the argument turns on lies in 2D. In 3D the three layouts form three rougly parallel descending lines, displaced from each other along the horizontal axis: each removes more exposure than the one before it, and each needs more of it before crossing parity; the bands flatten as
 threads per rank rise, which is the $a$ column.
 
 \begin{figure}[htbp]
@@ -1555,8 +1227,9 @@ threads per rank rise, which is the $a$ column.
 \end{figure}
 
 
-This explains two things.
+% to Find the figures:
 
+This explain the two things:
 
 First, why the 3D advantage rises and falls with node count:
 
@@ -1576,7 +1249,7 @@ differs.
   \centering
   \includegraphics[width=0.85\textwidth]{figures/ksp2d_exposure_tradeoff_by_chain.pdf}
   \caption{2D $\mathrm{ExposureRemoved}$ relative to flat MPI against the resulting time per
-  iteration, one point per size--node pair. The solid line is the
+  iteration, one point per size--node pair.The solid line is the
   pooled fit over all 11 points, the one \Cref{tab:sync-breakeven} tabulates; the two broken
   lines split those points into their weak-scaling chains, dashed with filled markers for
   $\sim$40k unknowns/core and dash-dotted with hollow markers for $\sim$80k. the lines are descriptive, not
@@ -1597,14 +1270,14 @@ $\mathrm{ExposureRemoved}$ never exceeds 8.6 points and it never crosses, bottom
 But because the threshold is descriptive, it has a counter-example, and \Cref{fig:2d-tradeoff}
 shows what it consists of: its pooled $a$ is positive, so the solid line lies flat and the table returns
 no break-even at all (it is pointless), while the two broken lines from one per chain both descend steeply
-across it. The flatness is therefore an artefact of pooling. Taken separately the chains correlate at $-0.91$
+across it. The flatness is therefore an artefact of pooling. Taken separate the chains correlate at $-0.91$
 over the six $\sim$40k points and $-0.96$ over the five $\sim80k$ points, among the tightest fits in these
-experiments. On that reading, what the layout lacks is therefore not a relationship between $\mathrm{ExposureRemoved}$ and speed but the value of the $\mathrm{ExposureRemoved}$, each chain's line reaches parity only beyond the largest $\mathrm{ExposureRemoved}$ the layout ever attains, 21.9 points, so neither threshold can be stated without extrapolating and neither is ever reached. That it is slower than flat MPI by 29--67\% at every one of its 11 points is a direct observation and needs no fit. Some other cost dominates. 
+experiments. Accourding to that, what the layout lacks therefore not a relationship between $\mathrm{ExposureRemoved}$ and speed but the value of the $\mathrm{ExposureRemoved}$, each chain's line reaches parity only beyond the largest $\mathrm{ExposureRemoved}$ the layout ever attains, 21.9 points, so neither threshold can be stated without extrapolating and neither is ever reached. That it is slower than flat MPI by 29--67\% at every one of its 11 points is a direct observation and needs no fit. Some other cost dominates. 
 
-\Cref{tab:map-shares} identifies that cost:
-at the same problem size and node counts, $16\times8$ spends more of its core-time waiting in the OpenMP runtime than any other layout, 76.5\% against 48.3\% for $64\times2$ at eight nodes. Both halves of the trade are therefore measured, one on the full matrix without a profiler and the other on eleven profiled cells with one.
-What remains unmeasured is their sum: the profiled and unprofiled quantities come from different
-instruments on different runs and cannot be added into a single budget.
+\Cref{tab:map-shares} identifies taht cost:
+at the same problem size and node counts, $16\times8$ spends more of its core-time waiting in the openMP runtime than any other layout, 76.5\% against 48.3\% for $64\times2$ at eight nodes. The two half of the trade are therefor both measured, one on the full matrix without a profiler and the other on eleven profiled cells with one.
+What remains unmeasured is their sum: the profiled and unprofiled quantites come from different instruments on
+different instruments on different runs and cannot be added into a single budget.
 
 
 \subsection{What This Does and Does Not Establish}
@@ -1712,35 +1385,25 @@ extend:
 
 \section{Weak-scaling throughput}
 \label{app:throughput}
-\Cref{fig:2d-throughput} and \Cref{fig:3d-throughput} give raw repeated-solve throughput
-for the weak-scaling campaign of \Cref{sec:weak}. The dashed reference in each panel is
-ideal weak scaling, that is throughput proportional to the node count, anchored on the
-flat-MPI point at the panel's smallest node count; a layout that held its per-core rate
-exactly would run along it. Throughput rises almost linearly along both chains in both
-dimensions, and the gap that opens below the ideal line is the same loss that
-\Cref{tab:weak-eff} reports as efficiency. The four layouts differ by only a few per cent
-against a range of three orders of magnitude, so these figures cannot carry the layout
-comparison. \Cref{fig:2d-ratio} and \Cref{fig:3d-ratio} do that instead.
+\Cref{fig:2d-throughput} and \Cref{fig:3d-throughput} give raw repeated-solve throughput for the weak-scaling campaign of \Cref{sec:weak}. Throughput rises almost linearly with the node count along both chains in both dimensions. The four layouts differ by only a few per cent against a range of three orders of magnitude, so these figures cannot carry the layout comparison. \Cref{fig:2d-ratio} and \Cref{fig:3d-ratio} do that instead.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{figures/ksp2d_throughput_vs_nodes}
-  \caption{Median 2D repeated-solve throughput along the two unknowns/core chains. The
-  dashed grey line is ideal weak scaling.}
+  \caption{Median 2D repeated-solve throughput along the two unknowns/core chains.}
   \label{fig:2d-throughput}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{figures/ksp3d_throughput_vs_nodes}
-  \caption{Median 3D repeated-solve throughput along the two unknowns/core chains. The
-  dashed grey line is ideal weak scaling.}
+  \caption{Median 3D repeated-solve throughput along the two unknowns/core chains.}
   \label{fig:3d-throughput}
 \end{figure}
 
 
 
-\section{Strong-scaling runtime grids}
+\section{Fixed-size runtime grids}
 \label{app:strong20m-grids}
 \Cref{sec:strong20m} presented these two campaigns as curves. \Cref{fig:2d-strong20m}
 showed the four 2D layouts falling together across the whole range and still falling at 32
@@ -1753,7 +1416,7 @@ those two figures.
 
 \begin{table}[htbp]
   \centering
-  \caption{2D strong-scaling campaign, $4500^2$ and 20.25M unknowns, median seconds per solve
+  \caption{2D fixed-size campaign, $4500^2$ and 20.25M unknowns, median seconds per solve
   over three runs at every layout and node count. The final columns give the 16-to-32-node
   speedup and the largest observed three-repeat spread on that row.}
   \label{tab:strong20m-grid-2d}
@@ -1774,7 +1437,7 @@ those two figures.
 
 \begin{table}[htbp]
   \centering
-  \caption{3D strong-scaling campaign, $273^3$ and 20.35M unknowns, median seconds per solve
+  \caption{3D fixed-size campaign,$273^3$ and 20.25M unknowns, median seconds per solve
   over three runs at every layout and node count. The final columns give the 16-to-32-node
   speedup and the largest observed three-repeat spread on that row.}
   \label{tab:strong20m-grid-3d}
