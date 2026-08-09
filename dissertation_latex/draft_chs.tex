@@ -1,38 +1,3 @@
-%==============================================================================
-% CHINESE COMPARISON DRAFT. Compile: biber draft_chs; latexmk -xelatex draft_chs.tex
-% draft.tex is the authoritative dissertation and evidence source. This file is an
-% editorial comparison aid, not an independent claim source. When draft.tex changes,
-% update the affected translation and recheck labels, citations, references, evidence
-% comments and the XeLaTeX/Biber build. Captions and tabular cells intentionally remain
-% in English as stable comparison anchors.
-%
-% 2026-08-09 RETRANSLATION. Chapters 4, 5, 6 and 7 (2D 与 3D 问题 / 性能剖析与瓶颈分析 /
-%   讨论 / 结论与未来工作) were raw machine translation and have been rewritten by hand
-%   against draft.tex as of that date, including the plain-language passes made to
-%   sec:rqs, ch:conclusion, ch:background, sec:threats and sec:guidance.
-%   Fixed throughout: the size labels 5m/10m/20m/41m/82m/165m (millions of unknowns) had
-%   been rendered as 米 (metres) in ch4-ch7 -- "在32节点165米处". They are now kept in the
-%   Latin form the figures and tables use. Other systematic errors removed: weak-scaling
-%   comparison -> "微弱的比喻", launcher-era -> "发射装置时代", two builds -> "两座建筑",
-%   saturation ordering -> "饱和命令", monotone -> "单酮".
-%   Every figure, table, \label, \Cref and % VERIFIED comment is unchanged; counts checked
-%   against the pre-rewrite backup (16 figures, 22 tables, 104 labels, 16 includegraphics).
-%   Terminology: "stop scaling" is 停止变快 / 不再变快, not 停止扩展. 饱和 is reserved for
-%   the technical sections. Chapters 1-3 were human-translated and were not touched.
-%
-% >>> THIS FILE IS THE LIVE COPY. Edit here. <<<
-% chapters/*.tex and main.tex are FROZEN and now out of date. Do not edit them
-% until the split-back below has happened.
-%
-% SPLIT-BACK PLAN (when the official EPCC template arrives / drafting settles):
-%   Each chapter is preceded by a  "% ===== FILE: chapters/xxx.tex ====="  marker.
-%   Cut at those markers into the matching files under chapters/, drop this
-%   preamble (main.tex already has it), and main.tex compiles unchanged.
-%   Keep \chapter/\section as-is: the structure is already the dissertation's.
-%
-% Draft settings: `oneside` = no blank pages between chapters. The printed
-% submission uses [11pt,a4paper,twoside,openright] + geometry bindingoffset=6mm.
-%==============================================================================
 \documentclass[11pt,a4paper,oneside]{report}
 
 %------------------------------------------------------------------ engine-safe fonts
@@ -139,7 +104,7 @@ $64\times2$ 在全部 11 个组合上的单次迭代时间都短于纯 MPI；在
 在 16 个节点后转差，而 $16\times8$ 到 32 个节点仍在改善，并比同一节点数下的纯 MPI
 快 $3.81\times$。PETSc 事件数据表明，混合布局的优势与较低的 halo exchange 和全局归约
 暴露度相关。11 份 Linaro MAP profile 显示，随着线程替代 rank，OpenMP runtime 中的等待
-比例反向上升；线程化 BLAS 最多只占求解窗口 core-time 的 2.1\%。这些测量定位了软件成本，
+比例反向上升；线程化 BLAS 最多只占求解期间 core time 的 2.1\%。这些测量定位了软件成本，
 但没有确定底层硬件机制。
 
 \chapter*{致谢}
@@ -1202,7 +1167,7 @@ MAP分析遵循的是同一合同. 它读取每个压缩 \texttt{.map} XML
 \label{sec:strong20m}
 相邻节点数的测量，每个规模只给出一步强扩展，看不出曲线在哪里转折。因此配对的扩展实验
 固定 20m 问题，对每种布局都跑 $\{1,2,4,8,16,32\}$ 个节点，求解器和重复求解的约定都不变。在 32
-个节点上每核只剩约 4.9 千个未知量，已经落在 \Cref{sec:configspace} 的准入区间之外。这个有意
+个节点上每核只剩约 4.9 千个未知量，远低于 \Cref{sec:configspace} 准入的每核 2.5 万到 10 万。这个有意
 过度分解的端点是用来探测饱和的，不应当被读作高效的运行区间。
 
 2 节点和 4 节点这两个锚点重复了早先弱扩展实验里采集过的规模--节点组合，用来检验两次
@@ -1622,26 +1587,23 @@ core-time 归给 PETSc、MPI、OpenMP 和各个库，但它启动不了 128 rank
 core-time 做划分。两者次序一致，只是事件核算层面上的旁证，不等于可以把两边的量相加，也不等于
 可以推出硬件成因。
 
-\section{MAP profiling 矩阵结果}
+\section{MAP profiling 结果}
 \label{sec:map-matrix}
-两场 MAP 实验剖析的是同一个 20.25M 二维问题：一组基线跑在 \texttt{arch-omp-opt} 上，
-节点数为 2、8、16；另一组与之对应，跑在生产 build \texttt{arch-omp-libsci-rome-opt} 上，节点数
-为 2 和 8。两组都没有 $128\times1$ 那一格，因为 MAP 在本系统上无法每节点启动 128 个 MPI rank。
-因此纯 MPI 只有 \texttt{-log\_view} 这一种证据。12 份 profile 中这里用了 11 份。16 节点的
-$16\times8$ 基线 profile 因其自身内容被剔除：MAP 在其中没有解析出任何库符号，所有采样都被归给
-采样器自身，这份文件不含成本信息。
+两场 MAP 实验剖析的是同一个 20.25M 二维问题：
 
-一个 \texttt{.map} 文件是压缩的 XML 文档，其中的 \texttt{sample} 元素是合并调用树的
-全局快照，每个节点记录了在该调用路径上处于活动状态的核心数。把树的叶子上的活动核心数加起来，
-就按实际在执行的代码把整个作业的 core-time 划分开，MAP 自己的百分比就是这么算的，而且只靠文件
-本身就能算。本文的分析正是这么做的，并且按文件内记录的 \texttt{srun} 命令行、而不是按文件名来
-校验每份 profile 的布局，然后报告两个范围。全程序范围涵盖所有采样。求解窗口范围只保留这样的
-采样：有核心处于 \texttt{KSPSolve} 内部，且没有任何核心处于 \texttt{PCSetUp} 内部，这样就仅凭
-profile 近似出重复求解阶段。它是一个时间窗口，不是 PETSc 的 \texttt{RepeatedSolves} 日志阶段，
-两者不可当作同一个量引用。
+\begin{enumerate}
+  \item 一组基线跑在 \texttt{arch-omp-opt} 上，节点数为 2、8、16；
+  \item 另一组与之对应，跑在生产 build \texttt{arch-omp-libsci-rome-opt} 上，节点数为 2 和 8。
+\end{enumerate}
 
-\Cref{tab:map-shares} 给出 11 份 profile 在求解窗口内的比例，\Cref{fig:map-shares}
-将其画出。
+两组都没有 $128\times1$ 那一格，因为 MAP 在本系统上无法每节点启动 128 个 MPI rank，所以纯 MPI
+只有 \texttt{-log\_view} 这一种证据。12 份 profile 中这里用了 11 份，16 节点的 $16\times8$ 基线
+profile 因其自身内容被剔除：MAP 在其中没有解析出任何库符号，这份文件不含成本信息。
+
+求解窗口范围只保留这样的采样：有核心处于 \texttt{KSPSolve} 内部，且没有任何核心处于
+\texttt{PCSetUp} 内部，这样就仅凭 profile 近似出重复求解阶段。它是一个时间窗口，不是 PETSc 的
+\texttt{RepeatedSolves} 日志阶段，两者不可当作同一个量引用。\Cref{tab:map-shares} 给出由此得到的
+比例，\Cref{fig:map-shares} 将其画出。
 
 \begin{table}[htbp]
   \centering
@@ -1689,31 +1651,41 @@ profile 近似出重复求解阶段。它是一个时间窗口，不是 PETSc �
   \label{fig:map-shares}
 \end{figure}
 
-两个实测比例朝相反方向移动。MPI 的比例随线程替代 rank 而下降：在 8 个节点上，
-$64\times2$、$32\times4$ 和 $16\times8$ 分别是 46.7\%、22.6\% 和 6.2\%。这正是
-\Cref{sec:bottleneck} 用 \texttt{-log\_view} 在整个正式矩阵上得到的次序，MAP 在事件核算层面与
-之一致。OpenMP runtime 的比例则朝另一个方向走，为 48.3\%、69.3\%、76.5\%；被采样到的栈帧是
-\texttt{cpu\_relax}、\texttt{do\_spin} 和 \texttt{\_\_futex\_wait}，也就是无事可做、正在等待
-的线程。两个 build 在重叠处都一致：四个共同的格子里，MPI 比例相差最多 0.9 个百分点，OpenMP
-比例最多 4.3 个百分点，且没有系统性的偏向。这种一致性符合布局效应，而不是 LibSci 效应。
+两类成本此消彼长。MPI 的比例随线程替代 rank 而下降：在 8 个节点上，$64\times2$、$32\times4$ 和
+$16\times8$ 分别是 46.7\%、22.6\% 和 6.2\%。这正是 \Cref{sec:bottleneck} 用 \texttt{-log\_view} 在
+整个正式矩阵上得到的次序，MAP 在事件核算层面与之一致。花在 OpenMP runtime 里的时间则朝另一个方向
+走，为 48.3\%、69.3\% 和 76.5\%，而且那不是有效工作：被采样到的栈帧是 \texttt{cpu\_relax}、
+\texttt{do\_spin} 和 \texttt{\_\_futex\_wait}，也就是无事可做、正在等待的线程。两个 build 在重叠处
+都一致：四个共同的格子里，MPI 比例相差最多 0.9 个百分点，OpenMP 比例最多 4.3 个百分点，且没有
+系统性的偏向。
 
-有三条限制。MAP 的开销大且不均匀（单独测得计时阶段为 $+35\%$，\texttt{VecScatterEnd}
-上约为三倍），而且它对 OpenMP 的插桩恰好扰动了正在被测量的 barrier 行为，因此这些绝对百分比
-高估了未插桩运行会呈现的数值。每格只有一份 profile，所以没有观测区间。此外，由于没有
-$128\times1$ 的 profile，这条趋势只在混合的那一端有锚点；不过纯 MPI 按定义就没有任何 OpenMP
-runtime 时间，这把缺失的那个点固定在零。
+以上全部受 MAP 自身的局限约束。每格只有一份 profile，因此没有观测区间。它的开销大且不均匀（单独
+测得计时阶段为 $+35\%$，\texttt{VecScatterEnd} 上约为三倍），而且它对 OpenMP 的插桩会扰动正在被
+测量的 barrier 行为，因此这些绝对百分比高估了未插桩运行会呈现的数值。
 
-在这些限制之内，MAP 在事件核算层面把不断增长的软件成本定位在 OpenMP 的等待路径上。
-它没有指出硬件成因。固定 $16\times8$ 不变、把节点数从 2 提到 8，等待比例在 LibSci build 上从
-53.5\% 升到 76.5\%，在基线 build 上从 57.8\% 升到 77.5\%。由于 rank 内部的线程放置没有变，这个
-观测与"线程化工作区间变短"是一致的，但 cache 上的不均衡同样可能汇集到同一批 barrier 上。本文
-测试的 rank 没有一个跨越 NUMA 边界，尽管八线程的 rank 会跨越共享 L3 的边界
-（\Cref{tab:layouts}）。因此要区分剩下的这些机制，需要硬件计数器（\Cref{sec:futurework}）。
+在这些局限之内，这张表回答了 \Cref{ch:multinode} 无法回答的一个问题，但只是在会计层面上，而不是
+机制层面上。随每 rank 线程数增长、并且必须先赚回来混合执行才划算的那份成本，是空耗在 OpenMP
+runtime 里的：增长的是 \texttt{cpu\_relax}、\texttt{do\_spin} 和 \texttt{\_\_futex\_wait} 上的时间，
+不是计算 kernel 上的时间。NUMA 放置仅凭拓扑就可以排除：八线程的 rank 会跨越共享 L3 的边界，但仍然
+装得进一个 16 核的 NUMA region，所以本文没有任何一种布局让 rank 跨越两个 NUMA region，四者在这一点
+上不可能有差别（\Cref{tab:layouts}）。
 
-第四个观测是否定性的。线程化的 LibSci 链接进了生产 build，而 PETSc 的稀疏求解路径
-几乎不调用它：在任何一份 LibSci profile 中，BLAS 最多只占求解窗口 core-time 的 2.1\%，而基线
-profile 里根本没有采样到任何 BLAS 栈帧。因此线程化 BLAS 库无法解释 \Cref{ch:multinode} 测得的
-布局次序，这一点此前 \Cref{sec:threats} 只能作为证据的局限来陈述，现在由 profile 数据确认。
+这种增长也不是放置效应，因为它在固定布局下同样存在 —— 此时一个 rank 的线程在每个节点数下都占据
+同样的核心、相对共享 L3 边界的位置也不变：固定 $16\times8$、把节点数从 2 提到 8，等待比例在 LibSci
+build 上从 53.5\% 升到 76.5\%，在基线 build 上从 57.8\% 升到 77.5\%，而每个线程化区域里的工作量在
+变少。
+
+这条曲线另外两个特征，即随线程数单调上升、以及最大值恰好出现在 $16\times8$ 表现最差的地方，与同一个
+解释是一致的，也就是每个线程化区域里的工作量更少了。但它们与 cache 方面的解释同样一致：跨越两个 CCX
+的 rank 可能产生负载不均，而这些不均会被同一批 barrier 汇集起来。profile 分不开这两者，因此线程究竟
+在等什么，留给 \Cref{sec:futurework} 的硬件计数器工作，\Cref{sec:sync-limits} 已说明这一点。
+\Cref{sec:bottleneck} 给出这笔交易的另一半，用的是完整矩阵，且不带 profiler。
+
+最后一个观测是否定性的，但值得一提。线程化的 LibSci 链接进了生产 build，而 PETSc 的稀疏求解路径几乎
+不调用它：在任何一份 LibSci profile 中，BLAS 最多只占求解窗口 core-time 的 2.1\%，而基线 profile 里
+根本没有采样到任何 BLAS 栈帧。因此线程化 BLAS 库无法解释 \Cref{ch:multinode} 测得的布局次序，这一点
+此前 \Cref{sec:threats} 只能作为证据的局限来陈述，现在由 profile 数据确认。
+
 
 \section{瓶颈识别}
 \label{sec:bottleneck}
@@ -2148,7 +2120,8 @@ $b$，也就是在还没减少任何暴露之前线程化本身的代价：它�
   \label{fig:2d-tradeoff}
 \end{figure}
 
-这解释了 \Cref{ch:multinode} 留下的两种现象。第一种：固定三维的某一布局和某一条链，
+$\mathrm{ExposureRemoved}$ 与 $\mathrm{TimeRatio}$ 之间的这种关系，可以描述性地解释
+\Cref{ch:multinode} 留下的两种现象。第一种：固定三维的某一布局和某一条链，
 沿节点数往上走，$\mathrm{ExposureRemoved}$ 和 $\mathrm{TimeRatio}$ 每一步都同时反向变化。在三维
 $\sim$40k 链上，$32\times4$ 从 1 节点到 32 节点的 $\mathrm{ExposureRemoved}$ 依次是 10.4、16.8、
 13.9、8.8、5.5 和 15.3 个百分点，$\mathrm{TimeRatio}$ 依次是 0.893、0.781、0.844、0.958、1.070
@@ -2182,8 +2155,8 @@ OpenMP runtime 里等待的 core-time 比任何其他布局都多，8 节点上�
 
 \subsection{证据能够与不能支持的结论}
 \label{sec:sync-limits}
-把一个维度全部 33 个混合测量点合在一起会破坏这种关系，而且在两个维度上破坏的方式还
-不一样。二维合并后的相关系数是 $+0.58$，而其中两种存在打平点的布局分别是 $-0.67$ 和 $-0.59$。
+把一个维度全部 33 个混合测量点合在一起，会破坏 $\mathrm{ExposureRemoved}$ 与
+$\mathrm{TimeRatio}$ 之间的关系，而且在两个维度上破坏的方式还不一样。二维合并后的相关系数是 $+0.58$，而其中两种存在打平点的布局分别是 $-0.67$ 和 $-0.59$。
 三维则从三个绝对值都超过 $0.8$ 的值降到 $+0.10$。
 
 第一个可疑对象是 $16\times8$，它的 $\mathrm{ExposureRemoved}$ 最大，同时也最慢。在三维

@@ -128,7 +128,7 @@ and starts getting slower after eight nodes, and the intermediate layouts after 
 $16\times8$ is still improving at 32 and is $3.81\times$ faster than flat MPI there. PETSc event data associate the hybrid
 advantage with lower exposure to halo exchange and global reduction. Eleven Linaro MAP
 profiles show an opposing rise in OpenMP-runtime waiting as threads replace ranks, while
-threaded BLAS accounts for at most 2.1\% of solve-window core-time. These measurements
+threaded BLAS accounts for at most 2.1\% of core time during the solve. These measurements
 locate the software costs but do not establish the hardware mechanism.
 
 \chapter*{Acknowledgements}
@@ -888,8 +888,8 @@ so their wall-clock times cannot answer which rank--thread layout is fastest.
 
 GAMG removes the direct one-block-per-rank coupling. At a fixed size and node count,
 layouts differ by at most two iterations in 2D and one in 3D, rather than by thousands.
-Time per outer KSP iteration controls that convergence variation, although it does not make
-GAMG hierarchy work or communication identical across decompositions. Results therefore
+Reporting time per outer KSP iteration takes that convergence variation out, although it
+does not make GAMG hierarchy work or communication identical across decompositions. Results therefore
 report both raw throughput and time per iteration.
 % Merged here 2026-07-16 from the deleted §4.3 "Effect of Solver Choice". Evidence
 %   RE-VERIFIED 2026-07-16 from raw logs (the CSVs are deleted): the "Linear solve" line
@@ -1418,8 +1418,9 @@ but answer different questions and are not pooled into a new statistic.
 The adjacent-node measurements give only one strong-scaling step per size and cannot show
 where a curve turns. A matched extension therefore fixes the 20m problems and runs nodes
 $\{1,2,4,8,16,32\}$ for every layout, without changing the solver or repeated-solve
-contract. At 32 nodes only about 4.9 thousand unknowns remain per core, outside the
-admission window of \Cref{sec:configspace}. This deliberately over-decomposed endpoint
+contract. At 32 nodes only about 4.9 thousand unknowns remain per core, well outside the
+25--100 thousand admitted by \Cref{sec:configspace}. This deliberately over-decomposed
+endpoint
 probes saturation and should not be read as an efficient operating range.
 
 The 2- and 4-node anchors repeat size--node pairs collected in the earlier weak campaign
@@ -1862,40 +1863,34 @@ reported as per-rank maxima, whereas MAP shares partition sampled core-time. Agr
 between their orderings is supporting evidence at the accounting level, not permission to
 sum the quantities or infer a hardware cause.
 
-\section{MAP Profiling Matrix Results}
+\section{MAP Profiling Results}
 \label{sec:map-matrix}
-Two MAP campaigns profiled the same 20.25M 2D problem: a baseline set on
-\texttt{arch-omp-opt} at 2, 8, and 16 nodes, and a matching set on the production
-\texttt{arch-omp-libsci-rome-opt} build at 2 and 8 nodes. Neither 
-contains a $128\times1$
-cell, because MAP cannot launch 128 MPI ranks per node on this system. Flat MPI therefore
-has \texttt{-log\_view} evidence only. Of the twelve profiles, eleven are used here. The
-16-node $16\times8$ baseline profile is rejected on its own content: MAP resolved no
-library symbols in it, so every sample is attributed to its own sampler and the file
-carries no cost information.
+Two MAP campaigns profiled the same 20.25M 2D problem:
 
-A \texttt{.map} file is a compressed XML document whose \texttt{sample} elements are
-whole-job snapshots of the merged call tree, each node carrying the number of cores active
-in that call path. Summing the active cores over the leaves of the tree partitions the
-job's core-time by the code that was actually running, which is how MAP itself forms its
-percentages, and it can be done from the file alone. The analysis here does that,
-validating each profile's layout against the \texttt{srun} line recorded inside the file
-rather than against its name, and reports two scopes. The whole-program scope covers every
-sample. The solve-window scope keeps only samples in which cores are inside
-\texttt{KSPSolve} and none is inside \texttt{PCSetUp}, which approximates the repeated-solve
-phase from the profile alone. It is a time window, not the PETSc \texttt{RepeatedSolves}
-logging stage, and the two must not be quoted as the same quantity.
+\begin{enumerate}
+  \item a baseline set on \texttt{arch-omp-opt} at 2, 8 and 16 nodes;
+  \item a matching set on the production \texttt{arch-omp-libsci-rome-opt} build at 2 and 8
+    nodes.
+\end{enumerate}
 
-\Cref{tab:map-shares} gives the resulting solve-window shares for all eleven profiles, and
-\Cref{fig:map-shares} plots them.
+Neither contains a $128\times1$ cell, because MAP cannot launch 128 MPI ranks per node on
+this system, so flat MPI has \texttt{-log\_view} evidence only. Of the twelve profiles,
+eleven are used. The 16-node $16\times8$ baseline profile is rejected on its own content:
+MAP resolved no library symbols in it, so it carries no cost information.
+
+The solve-window scope keeps only the samples in which cores are inside \texttt{KSPSolve}
+and none is inside \texttt{PCSetUp}, which approximates the repeated-solve phase from the
+profile alone. It is a time window, not the PETSc \texttt{RepeatedSolves} logging stage, and
+the two must not be quoted as the same quantity. \Cref{tab:map-shares} gives the resulting
+shares and \Cref{fig:map-shares} plots them.
 
 \begin{table}[htbp]
   \centering
   \caption{Share of total core-time inside the solve window, by the library owning the
   executing frame, for the eleven usable MAP profiles at 20.25M unknowns in 2D. OpenMP is
   the GNU runtime's spin and wait paths, that is threads with no work. MAP instrumentation
-  inflates these runs, so the ordering between layouts is the result. The absolute values
-  are not transferable to the uninstrumented campaigns.}
+  inflates these runs, so the ordering between layouts is the result; the absolute values do
+  not transfer to the uninstrumented campaigns.}
   \label{tab:map-shares}
   \begin{tabular}{llrrrrr}
     \toprule
@@ -1917,6 +1912,132 @@ logging stage, and the two must not be quoted as the same quantity.
     \bottomrule
   \end{tabular}
 \end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{map_solve_window_shares}
+  \caption{Where the cores are during the solve, from the MAP call trees. Within each panel
+  the OpenMP waiting share grows and the MPI share shrinks as threads replace ranks, and
+  both effects strengthen with node count. Paired bars are the two PETSc builds at the same
+  configuration.}
+  \label{fig:map-shares}
+\end{figure}
+
+The two costs trade against each other. The MPI share falls as threads replace ranks: at
+eight nodes it goes 46.7\%, 22.6\% and 6.2\% across $64\times2$, $32\times4$ and
+$16\times8$. That is the ordering \Cref{sec:bottleneck} obtains from \texttt{-log\_view} on
+the whole formal matrix, and MAP is consistent with it at the event-accounting level. Time
+in the OpenMP runtime runs the other way, 48.3\%, 69.3\% and 76.5\%, and it is not useful
+work: the frames are \texttt{cpu\_relax}, \texttt{do\_spin} and \texttt{\_\_futex\_wait},
+that is threads waiting for something to do. The two builds agree wherever they overlap.
+Across the four common cells the MPI shares differ by at most 0.9 percentage points and the
+OpenMP shares by at most 4.3, with no systematic sign.
+
+MAP's limits bound all of this. There is one profile per cell, so there is no observed
+range. The overhead is large and uneven, separately measured at $+35\%$ on the timed stage
+and roughly threefold on \texttt{VecScatterEnd}, and the OpenMP instrumentation perturbs the
+barrier behaviour being measured, so the absolute percentages overstate what an
+uninstrumented run would show.
+
+Within those limits the table answers a question \Cref{ch:multinode} could not, at the level
+of accounting rather than of mechanism. The cost that grows with threads per rank, and that
+hybridisation has to repay before it pays off, is spent idle in the OpenMP runtime: what
+grows is time in \texttt{cpu\_relax}, \texttt{do\_spin} and \texttt{\_\_futex\_wait}, not
+time in the compute kernels. NUMA placement is excluded on topology alone. A rank of eight
+threads crosses a shared-L3 boundary but still fits inside one 16-core NUMA region, so no
+layout in this study puts a rank across two NUMA regions and the four cannot differ in that
+respect (\Cref{tab:layouts}).
+
+Nor is the growth a placement effect, because it is present at a fixed layout, where a
+rank's threads occupy the same cores against the same shared-L3 boundary at every node
+count. Holding $16\times8$ fixed and going from two nodes to eight raises the waiting share
+from 53.5\% to 76.5\% on the LibSci build and from 57.8\% to 77.5\% on the baseline, as the
+work per threaded region shrinks.
+
+The other two features of the shape, monotonicity in the thread count and a maximum exactly
+where $16\times8$ performs worst, are consistent with that same explanation, that each
+threaded region holds less work. They are equally consistent with a cache explanation, in
+which a rank spanning two CCXs produces an imbalance that the same barriers collect. The
+profiles cannot separate the two, so why the threads wait is left to the hardware counters
+of \Cref{sec:futurework}, as \Cref{sec:sync-limits} sets out. \Cref{sec:bottleneck} shows
+the other half of the trade, on the full matrix and without a profiler.
+
+The last observation is negative and worth stating. Threaded LibSci is linked into the
+production build, and PETSc's sparse solve path barely calls it: BLAS accounts for at most
+2.1\% of solve-window core-time in any LibSci profile, and the baseline profiles sample no
+BLAS frame at all. The threaded BLAS library therefore cannot account for the layout
+ordering measured in \Cref{ch:multinode}, which confirms from profile data what
+\Cref{sec:threats} could previously only state as a limit of the evidence.
+
+% BACK-REFERENCE SWEEP 2026-08-09, after the "are consistent with this reading" fix, looking
+%   for the same fault everywhere else: a demonstrative or a defined term whose antecedent is
+%   not on the page. Six found and fixed, no number touched.
+%   (1) sec:sync-tradeoff opened a paragraph "This accounts descriptively for two patterns
+%       left by Ch4" -- and it opened it immediately after a figure float, so "This" competed
+%       with the figure the reader had just looked at. Now "The relationship between
+%       ExposureRemoved and TimeRatio accounts descriptively for ...".
+%   (2) sec:sync-limits opened "Pooling all 33 hybrid measurements of a dimension breaks THE
+%       RELATIONSHIP" as its first sentence, so the antecedent was in the previous
+%       subsection. Now names the two quantities. "breaks it differently in each" also gained
+%       its noun, "in each dimension".
+%   (3) sec:solver "Time per outer KSP iteration CONTROLS that convergence variation" was the
+%       last surviving "controls", which reads as statistical control. sec:threats had the
+%       same verb fixed earlier today; this one was missed. Now "Reporting time per outer KSP
+%       iteration takes that convergence variation out". grep confirms zero left.
+%   (4) The ABSTRACT used "solve-window core-time". Solve window is defined in sec:map-matrix,
+%       two hundred pages later in reading order, and an abstract has to stand alone. Now
+%       "core time during the solve", matching the wording sec:conclusions already uses.
+%   (5) sec:strong20m used "the admission window of sec:configspace" at its first appearance
+%       in the document, with no gloss. Now "well outside the 25--100 thousand admitted by
+%       sec:configspace", which states the quantity where the reader first meets it. Later
+%       uses in sec:rq2 and sec:threats keep the term, which is now glossed twice before them.
+%   CHECKED AND LEFT ALONE: "the trade" (defined at sec:motivation and used consistently),
+%   "the former/the latter" (no occurrences), gapped verbs before a full stop, and pronouns
+%   with two competing antecedents -- the six candidates the scan raised all resolve on the
+%   same line. ExposureRemoved, TimeRatio and BreakEven are each first used inside the
+%   display equation that defines them, which is the right order.
+% MERGED 2026-08-09 with Leyan's own draft of this section, on request. Their structure is
+%   adopted almost entirely, and it is better than what it replaces: the two campaigns as a
+%   numbered list, the .map-file mechanics dropped, and the argument reordered so the
+%   FIXED-LAYOUT observation carries the weight rather than the cross-layout ordering.
+%   The .map paragraph deleted on request described how the XML is parsed and how active
+%   cores are summed over call-tree leaves. It was method for reproducing the table, not
+%   evidence for any claim, and the script is named in app:regen.
+%   FIVE THINGS FROM THE DRAFT WERE NOT TAKEN, each for a stated reason:
+%   (1) "reproduced here by a different instrument on a different quantity" was NOT restored
+%       for the MPI ordering, and the weaker "MAP is consistent with it at the
+%       event-accounting level" stands. The 2026-08-07 note at sec:sync-limits records why:
+%       the MPI core-time share has a structural ceiling of 1/(threads per rank) if MPI is
+%       only ever issued from the master thread -- 50/25/12.5% against measured
+%       46.7/22.6/6.2 -- so that ordering may be partly arithmetic and "different quantity"
+%       would overstate the independence. The draft's own emphasis on the fixed-layout
+%       observation is the right response and IS taken: that one is unaffected, because the
+%       ceiling is constant when the layout is held fixed.
+%   (2) \includegraphics{figures/map_solve_window_shares} -> bare filename. \graphicspath is
+%       {figures/} and a path into the tree is exactly what broke the build once before.
+%   (3) The figure had no \Cref anywhere in the draft. House rule: a figure nobody points at
+%       gets cut. Restored "\Cref{tab:map-shares} gives the resulting shares and
+%       \Cref{fig:map-shares} plots them", and the figure now precedes the discussion it
+%       supports rather than sitting after it.
+%   (4) Table caption: kept "MAP instrumentation inflates these runs, so the ordering
+%       between layouts is the result; the absolute values do not transfer". That is the
+%       scope limit on every number in the table and the draft had dropped it. The figure
+%       caption likewise keeps the sentence explaining the paired bars.
+%   (5) \Cref{sec:sync-limits} in the closing LibSci sentence -> \Cref{sec:threats}, which is
+%       where the LibSci limitation was actually stated. sec:sync-limits is about pooling.
+%   RESTORED, because the table cannot be read without it: "Of the twelve profiles, eleven
+%   are used", with the one-line reason. The draft dropped it, but the table has an 11th row
+%   and an asymmetric baseline block, and a reader counting 3+3 LibSci and 5 baseline cells
+%   has no way to know why 16-node 16x8 is absent. The Baseline 16-node 32x4 row was also
+%   missing from the draft's table and is restored; without it the table has ten rows against
+%   a caption saying eleven.
+%   \texttt{KSPSolver} -> \texttt{KSPSolve}, and "ignore PCSetUp" -> "none is inside
+%   PCSetUp", which is what the filter actually does.
+%   The draft's inline "%run another one to solve this!!!" is NOT actionable and was not
+%   carried over: MAP cannot launch 128 ranks per node on this system, which is the reason
+%   the cell is missing in the first place, not a scheduling accident.
+
+
 % VERIFIED 2026-08-01 by analysis/scripts/map_profiles/analyze_map_profiles.py, which
 %   parses the gzipped MAP XML directly (no Forge licence, no `map --export`), validates
 %   each profile against its recorded srun line, and RAISES if the solve-window OpenMP
@@ -1924,53 +2045,6 @@ logging stage, and the two must not be quoted as the same quantity.
 %   analysis/data/nproc_2d_libsci/csv/derived/map_profiles/map_call_tree_shares.csv and
 %   .../reports/map_profile_analysis.md. Rows sum to under 100%: libc, the loader and the
 %   sampler make up the small "other" remainder, which is omitted from the table.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{map_solve_window_shares}
-  \caption{Where the cores are during the solve, from the MAP call trees. Within each
-  panel the OpenMP waiting share grows and the MPI share shrinks as threads replace ranks,
-  and both effects strengthen with node count. Paired bars are the two PETSc builds at the
-  same configuration.}
-  \label{fig:map-shares}
-\end{figure}
-
-The two measured shares move in opposite directions. The MPI share falls as threads replace
-ranks: at eight nodes it is 46.7\%, 22.6\% and 6.2\%
-across $64\times2$, $32\times4$ and $16\times8$. That is the ordering
-\Cref{sec:bottleneck} obtains from \texttt{-log\_view} on the whole formal matrix,
-and MAP is consistent with it at the event-accounting level. OpenMP runtime share runs the
-other way, 48.3\%, 69.3\%, 76.5\%; the sampled frames
-are \texttt{cpu\_relax}, \texttt{do\_spin} and \texttt{\_\_futex\_wait}, that is threads
-waiting for something to do. The two builds agree wherever they overlap: across the four
-common cells the MPI shares differ by at most 0.9 percentage points and the OpenMP shares
-by at most 4.3, with no systematic sign. This agreement is consistent with a layout effect
-rather than a LibSci effect.
-
-Three limits apply. MAP's overhead is large and uneven  (separately measured at $+35\%$
-on the timed stage and roughly threefold on \texttt{VecScatterEnd}),and its OpenMP
-instrumentation perturbs exactly the barrier behaviour being measured, so the absolute
-percentages overstate what an uninstrumented run would show. There is one profile per
-cell, so there is no observed range. And with no $128\times1$ profile the trend is
-anchored only at its hybrid end, though flat MPI has no OpenMP runtime time at all by
-construction, which fixes the missing point at zero.
-
-Within those limits, MAP locates the growing software cost in OpenMP wait paths at the
-event-accounting level. It does not identify its hardware cause. Holding $16\times8$ fixed
-from two to eight nodes raises the waiting share from 53.5\% to 76.5\% on the LibSci build
-and from 57.8\% to 77.5\% on the baseline. Because thread placement within a rank is
-unchanged, this observation is consistent with shorter threaded work regions, but cache
-imbalance could be collected at the same barriers. No tested rank crosses a NUMA boundary,
-although eight-thread ranks cross a shared-L3 boundary (\Cref{tab:layouts}). Hardware
-counters are therefore needed to distinguish the remaining mechanisms
-(\Cref{sec:futurework}).
-
-A fourth observation is negative. Threaded LibSci is linked into the
-production build and PETSc's sparse solve path barely calls it: BLAS accounts for at most
-2.1\% of solve-window core-time in any LibSci profile, and the baseline profiles sample no
-BLAS frame at all. The threaded BLAS library therefore cannot account for the layout
-ordering measured in \Cref{ch:multinode}, which confirms from profile data what
-\Cref{sec:threats} could previously only state as a limit of the evidence.
 
 \section{Bottleneck Identification}
 \label{sec:bottleneck}
@@ -2432,7 +2506,8 @@ is the $a$ column, and within each band the solid line and its two chains stay t
   \label{fig:2d-tradeoff}
 \end{figure}
 
-This accounts descriptively for two patterns left by \Cref{ch:multinode}. For the first,
+The relationship between $\mathrm{ExposureRemoved}$ and $\mathrm{TimeRatio}$ accounts
+descriptively for two patterns left by \Cref{ch:multinode}. For the first,
 holding a 3D layout and chain fixed while increasing the node count makes
 $\mathrm{ExposureRemoved}$ and $\mathrm{TimeRatio}$ reverse together at every
 step. Along the $\sim$40k chain
@@ -2475,8 +2550,9 @@ different instruments on different runs and cannot be added into a single budget
 
 \subsection{What This Does and Does Not Establish}
 \label{sec:sync-limits}
-Pooling all 33 hybrid measurements of a dimension breaks the relationship, and breaks it
-differently in each. In 2D the pooled correlation is $+0.58$, where the two layouts that
+Pooling all 33 hybrid measurements of a dimension breaks the relationship between
+$\mathrm{ExposureRemoved}$ and $\mathrm{TimeRatio}$, and breaks it differently in each
+dimension. In 2D the pooled correlation is $+0.58$, where the two layouts that
 have a break-even give $-0.67$ and $-0.59$. In 3D it falls to $+0.10$ from three values that
 all exceed $0.8$ in magnitude.
 
