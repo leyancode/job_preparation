@@ -185,7 +185,8 @@ The choice has costs on both sides. An ARCHER2 compute node provides 128 physica
 across two sockets, eight NUMA regions, and thirty-two four-core shared-L3 domains. Flat
 MPI makes every subdomain a separate process, with its own address space, its own message
 matching, and its own copy of the solver's state. Replacing ranks with threads reduces the
-number of MPI endpoints and subdomain boundaries. It also adds the cost of creating and
+number of MPI endpoints, the processes that send and receive messages, and with them the
+number of subdomain boundaries. It also adds the cost of creating and
 synchronising thread teams, and makes the threads inside a rank share caches and memory
 channels.
 
@@ -202,7 +203,8 @@ This study compares flat MPI with three hybrid layouts for matched 2D and 3D Poi
 problems. Six problem sizes cover 5.0--164.6 million unknowns on 1--32 fully populated
 nodes, with core count, solver and convergence criteria fixed at each comparison. The
 unknowns-per-core filter leaves each size at only one or two node counts, so those points
-support weak-scaling chains but not a long saturation curve. A matched extension therefore
+support weak-scaling chains but not a curve long enough to show where adding nodes stops
+helping. A matched extension therefore
 holds about 20 million unknowns fixed across the full node range. Together the campaigns
 address four questions.
 
@@ -238,18 +240,40 @@ limits. The later change from GMRES to CG replaced \texttt{VecMDot} with
 
   \item \textbf{Evidence that the scaling regime changes the recommendation.} Eight
     threads per rank wins no weak-scaling point, yet $16\times8$ is the fastest 3D layout
-    when the fixed problem reaches 4096 cores because it saturates later than the others.
+    when the fixed problem reaches 4096 cores, because it keeps improving to a higher node
+    count than the others.
 
   \item \textbf{Event-level evidence for both sides of the trade.} PETSc event data link
-    hybrid layouts to lower halo and reduction exposure over all 264 formal weak-scaling
-    runs, while eleven MAP profiles locate the opposing sampled cost in OpenMP-runtime
+    hybrid layouts to lower halo and reduction exposure at every one of the 22 size--node
+    points, while eleven MAP profiles locate the opposing sampled cost in OpenMP-runtime
     waiting. The association is descriptive: it identifies software events but does not
     establish whether cache, memory bandwidth, load imbalance or region length causes the
     waiting.
+% CORRECTED 2026-08-10: was "over all 264 formal weak-scaling runs". 264 is the PARSE scope
+%   of sec:sync-events, and the unit of a DIFFERENT claim (neighbour_pct > reduction_pct in
+%   every one of the 264 rows). The exposure-reduction claim is established at the 22
+%   size--node points, on medians: all three hybrid layouts have exposure_removed_pt > 0 at
+%   11/11 points in each dimension, and analyze_event_breakdown.py line 398 raises on <= 0.
+%   This is the FOURTH instance of a number being borrowed into this claim from a
+%   neighbouring one -- see the notes at sec:sync-breakeven (2026-08-06), sec:rq3
+%   (2026-08-08) and sec:sync-halo, all of which caught "21 of 22" leaking in from the
+%   four-layout ORDERING claim. Before editing this bullet, check which unit the source
+%   section actually verifies.
+%   FURTHER REASON not to say 264 here: 16 of those 264 rows are defective. In
+%   repeated_fullnode_event_shares.csv, at scale 20m only and rep 1 only, `neighbour` and
+%   `reduction` are about 2x their rep-2/rep-3 values while `ksp_time` is unchanged to
+%   within 3% (3D ratios 1.96-2.04; every other scale is 0.87-1.20). The visible symptom is
+%   3D 128x1 sync_pct = 105.4 at 20m/2n and 129.1 at 20m/4n, i.e. above 100% of KSPSolve
+%   time, which is impossible. Medians are unaffected because the bad value is always the
+%   largest of the three, so no number in Ch4 or Ch6 changes; but no per-run or range claim
+%   should quote 264 until the raw 20m logs are re-checked. Those logs are not currently on
+%   the filesystem. OPEN ITEM.
 
   \item \textbf{A repeated-solve measurement method.} The drivers pay for GAMG setup once
-    and time 19 reused solves in a dedicated PETSc logging stage, preventing hierarchy
-    construction and first-touch effects from dominating the layout comparison.
+    and time 19 reused solves in a dedicated PETSc logging stage, so that neither hierarchy
+    construction nor the memory placement the first solve pays for, when a page is assigned
+    to the memory of whichever NUMA region touches it first, dominates the layout
+    comparison.
 
   \item \textbf{A reproducible and auditable pipeline.} Raw logs, analysis scripts and
     figure generation are retained together. The pipeline parses MAP files directly,
@@ -334,37 +358,62 @@ PETSc's hybrid path. Other families of programming model are outside its scope.
 
 \section{Limitations of Flat MPI}
 \label{sec:flatmpi}
-Flat MPI assigns one rank to each core. Its main advantage is uniformity: the same domain
+Flat MPI assigns one rank to each core. Its advantage is uniformity: the same domain
 decomposition and communication model applies within and between nodes, and each rank
-executes single-threaded code. This gives predictable placement and avoids thread-safety
+executes single-threaded code, which gives predictable placement and avoids thread-safety
 and OpenMP scheduling costs. A hybrid configuration must outperform this measured
 baseline, not an abstract MPI implementation.
 
 Strong scaling fixes the global problem while increasing the core count, so work per core
-falls. Weak scaling grows the problem to hold work per core constant, with constant time
-per iteration as the ideal. The first measures how far one problem can be spread. The second
-holds the local work roughly still, so that what is left to measure is the cost of running
-more things at once. The admission rule of \Cref{sec:configspace} is what makes the main
-campaign a weak-scaling one, and \Cref{sec:bands} states that formally.
+falls; weak scaling grows the problem to hold work per core constant, with constant time
+per iteration as the ideal. Under strong scaling the latency-sensitive operations do not
+shrink with the local work, because a stencil matrix-vector product still exchanges
+boundary values and Krylov dot products still require collective reductions, while more of
+each shrinking subdomain is boundary and less of it is interior. Communication therefore
+takes a larger share of an iteration. Weak scaling does not remove that cost; it makes it
+easier to see on its own, because the local kernel work stays steady and any growth in time
+per iteration comes from what changes with concurrency: neighbour exchange, the number of
+ranks taking part in a global reduction, and the depth of the reduction tree.
 
-Under strong scaling, each rank receives less local work, but latency-sensitive operations
-do not shrink at the same rate. A stencil matrix-vector product still exchanges boundary
-values, and Krylov dot products still require collective reductions. As the local subdomain
-shrinks, more of it is boundary and less of it is interior, so communication takes a larger
-share of an iteration. More ranks also mean more subdomains, and solver or preconditioner
-state that each rank has to keep its own copy of.
-
-Weak scaling does not remove communication costs. It makes them easier to see on their own.
-Holding unknowns per core roughly fixed keeps the local kernel work steady, so any growth in
-time per iteration comes from the things that change with concurrency: neighbour exchange,
-the number of ranks taking part in a global reduction, and the depth of the reduction tree. \Cref{ch:multinode} therefore reports the
-campaign along weak-scaling chains when comparing ranks with threads.
-
-Replacing ranks with threads reduces MPI endpoints and enlarges rank-local subdomains, but
-adds thread overhead. On ARCHER2, Judge found benefits at two or four threads per rank for
-communication-heavy CP2K and CASTEP runs, but little benefit for the tested molecular-
-dynamics cases before their scaling limits \cite{judge2022mpiopenmp}. The balance is
-application-specific.
+Whether replacing ranks with threads helps under either regime is application-specific. On
+ARCHER2, Judge found benefits at two or four threads per rank for communication-heavy CP2K
+and CASTEP runs, but little benefit for the tested molecular-dynamics cases before their
+scaling limits \cite{judge2022mpiopenmp}.
+% CONDENSED 2026-08-10: five paragraphs, 339 words -> three, 231. No claim, number or
+%   citation was dropped; what went was material stated a second time here.
+%   (1) Old paragraph 2 previewed strong and weak scaling ("The first measures how far one
+%       problem can be spread. The second holds the local work roughly still...") and
+%       paragraphs 3 and 4 then said the same two things at length. Preview deleted, the two
+%       expansions merged into one paragraph. This section remains the OWNER of the
+%       regime definitions -- see the ambiguity note further down this chapter, which turns
+%       on sec:flatmpi defining weak scaling as a regime -- so both definitions are intact.
+%   (2) "More ranks also mean more subdomains, and solver or preconditioner state that each
+%       rank has to keep its own copy of" duplicated sec:models ("a separate copy of the
+%       library's state in every rank") and sec:motivation ("its own copy of the solver's
+%       state"). Third statement, deleted.
+%   (3) "Replacing ranks with threads reduces MPI endpoints and enlarges rank-local
+%       subdomains, but adds thread overhead" duplicated sec:hybrid's opening sentence
+%       almost verbatim, and sec:motivation before that. Deleted; "application-specific",
+%       which was the paragraph's actual point, is promoted to its topic sentence so Judge
+%       still arrives as evidence for a stated claim rather than out of nowhere.
+% FORWARD POINTERS REMOVED 2026-08-10, second pass. The condensed paragraph still ended
+%   "The admission rule of \Cref{sec:configspace} makes the main campaign a weak-scaling
+%   one, and \Cref{ch:multinode} reports it along the chains of \Cref{sec:bands}." Deleted.
+%   This section is expository: it exists to give the reader the two regimes before anything
+%   in the study uses them. Three forward \Crefs into chapters the reader has not reached
+%   send them to an admission rule and a set of chains that are not defined yet, so they
+%   cannot act on the pointer; sec:structure and sec:gap already carry the roadmap.
+%   The deletion costs nothing, because the destination does not depend on it: sec:bands
+%   makes the whole argument standing alone -- it states the 25,000-100,000 filter, builds
+%   the two chains in tab:bands, and says "They are reported as weak scaling, while adjacent
+%   node counts at a fixed size remain local strong-scaling observations." Ch4's sec:mn-intro
+%   likewise re-states both regime definitions in its own words. Nothing was relying on
+%   being told in Chapter 2.
+%   SIDE EFFECT, deliberate and harmless: sec:bands is now an unreferenced label (it was
+%   cited exactly once, here). It needs no reference -- the reader arrives at it by reading
+%   Ch4 in order. If the link is ever wanted, make it BACKWARD from sec:bands or
+%   sec:mn-intro to \Cref{sec:flatmpi}, which a reader can follow, rather than forward from
+%   here, which they cannot.
 
 \section{Hybrid MPI+OpenMP}
 \label{sec:hybrid}
@@ -569,16 +618,43 @@ mixed with uninstrumented scaling results.
 
 \section{Summary and Research Gap}
 \label{sec:gap}
-Prior work reports hybrid benefits for communication-heavy ARCHER2 applications
-\cite{judge2022mpiopenmp} and for a specialised PETSc matrix kernel
-\cite{lange_petsc_hybrid}. It does not evaluate PETSc 3.24's current threaded-kernel
-backend with CG+GAMG across matched 2D and 3D stencil problems, nor map its rank--thread
-balance across both scaling regimes. The open question here is narrower than whether hybrid
-programming can be fast. It is whether this backend cuts steady-state solve time when the
-node is fully populated with 128 cores either way, which balance is best as the job grows,
-and which measured events go with the difference. This study fixes total cores, solver and
-convergence criteria while varying layout, problem size and node count, then links runtime
-to \texttt{-log\_view} and MAP evidence.
+This chapter has set out the two execution models and the trade between them
+(\Cref{sec:models,sec:hybrid}), the ARCHER2 node boundaries that constrain any layout
+(\Cref{sec:archer2}), the CG+GAMG solver whose halo exchanges and global reductions are
+the quantities at stake (\Cref{sec:petsc-krylov}), and the two instruments that measure
+them (\Cref{sec:tools}).
+
+Prior work reports hybrid benefits on ARCHER2 for communication-heavy applications
+\cite{judge2022mpiopenmp} and, for PETSc, for a sparse matrix-vector kernel rewritten for
+the purpose \cite{lange_petsc_hybrid}. Neither covers the threaded-kernel backend that
+PETSc 3.22 added as an ordinary configure option \cite{petsc_openmp_backend}, built here
+at 3.24.4: the reviewed literature does not evaluate it with CG+GAMG across matched 2D and
+3D stencil problems, nor report how its best rank--thread balance moves between the weak-
+and strong-scaling regimes. The open question is therefore narrower than whether hybrid
+programming can be fast. It is whether an unmodified PETSc build reduces repeated-solve
+time when every layout occupies all 128 cores of a node, which balance is best as the job
+grows, and which measured events accompany the difference. This study holds the core
+count, solver and convergence criteria fixed at each comparison while varying layout,
+problem size and node count, then reads the result against \texttt{-log\_view} and MAP
+evidence.
+% REVISED 2026-08-10. Four accuracy fixes, no new claim.
+%   (1) "PETSc 3.24's current threaded-kernel backend" -> 3.22 added the option, built here
+%       at 3.24.4. The backend is a 3.22 feature (sec:hybrid, cite petsc_openmp_backend =
+%       "Changes: 3.22"); 3.24.4 is only the build version (sec:env). sec:motivation
+%       and sec:hybrid both already said 3.22, so this section was the sole outlier.
+%   (2) "fixes total cores ... while varying ... node count" was self-contradictory: total
+%       cores run 128 to 4096 across the campaign. Now "fixed at each comparison", matching
+%       sec:aims, which already had it right.
+%   (3) "fully populated with 128 cores either way" -> "every layout occupies all 128 cores
+%       of a node". "Either way" reads binary; there are four layouts, and 128 is per node.
+%   (4) "a specialised PETSc matrix kernel" -> "rewritten for the purpose", and the question
+%       now names "an unmodified PETSc build". That is the actual contrast with
+%       lange_petsc_hybrid, which sec:hybrid already states and this section had dropped.
+%   ALSO: "steady-state" -> "repeated-solve", the term sec:petsc-krylov ends on; steady-state
+%       is not defined until sec:whyrepeat. "It does not evaluate" -> "the reviewed
+%       literature does not", scoping the absence claim. "go with" -> "accompany", same
+%       association-only force. Opening summary sentence added so the section earns the
+%       "Summary" in its title; it is pointers only and states nothing new.
 
 % PLAIN-LANGUAGE PASS 2026-08-09, ch:background, third in the series after sec:rqs and
 %   ch:conclusion. WORDING ONLY except the two items marked below. No citation, number or
@@ -1172,7 +1248,7 @@ When they do not overlap, the result supports a difference within this sample bu
 does not establish a universal ordering beyond the tested configuration.
 Every direct layout comparison also holds problem size, node count, total physical cores,
 solver options and convergence tolerance fixed. Comparisons across scaling regimes remain
-separate even when they share an anchor point.
+separate even when they share a size--node pair.
 
 \section{Superseded Campaigns}
 \label{sec:superseded}
@@ -1420,11 +1496,11 @@ where a curve turns. A matched extension therefore fixes the 20m problems and ru
 $\{1,2,4,8,16,32\}$ for every layout, without changing the solver or repeated-solve
 contract. At 32 nodes only about 4.9 thousand unknowns remain per core, well outside the
 25--100 thousand admitted by \Cref{sec:configspace}. This deliberately over-decomposed
-endpoint
-probes saturation and should not be read as an efficient operating range.
+final point exists to show where adding nodes stops helping, and should not be read as an
+efficient operating range.
 
 The 2- and 4-node anchors repeat size--node pairs collected in the earlier weak campaign
-and test for a session shift. The 2D medians differ by at most 2.2\%, with six of eight
+and test for a shift between measurement sessions. The 2D medians differ by at most 2.2\%, with six of eight
 ranges overlapping. The 3D reruns are 0.3--3.1\% slower and none of the eight ranges
 overlaps, so the two sessions are reported separately rather than pooled.
 
@@ -1666,8 +1742,8 @@ Three 3D layouts reach a minimum time and then get slower again within the measu
 reaches its minimum at eight nodes, $64\times2$ and $32\times4$ at 16. Only $16\times8$
 still improves at 32 nodes, where its 0.0681\,s solve is $3.81\times$ faster than flat MPI
 on the same 4096 cores and 10\% faster than $32\times4$. The disjoint ranges support a
-layout difference at that endpoint, but the campaign does not locate the later
-$16\times8$ saturation point.
+layout difference at 32 nodes, but the campaign does not locate the node count at which
+$16\times8$ would itself stop improving.
 
 \begin{figure}[htbp]
   \centering
@@ -1690,10 +1766,21 @@ curves do not turn, so their efficiencies remain in \Cref{tab:strong20m-endpoint
   \label{fig:3d-strong20m-eff}
 \end{figure}
 
-\subsection{Endpoints}
+\subsection{Best Layout and the 32-Node Endpoint}
 \label{sec:strong-endpoints}
 \Cref{tab:strong20m-best} gives the fastest layout and its margin over flat MPI at each
 node count. The 2D margin stays below 6.9\%; the 3D margin reaches 281.3\% at 32 nodes.
+\Cref{tab:strong20m-endpoints} then reports the far end of each curve on its own, the
+32-node point at 4096 cores, which is where the layouts are furthest apart.
+% RETITLED 2026-08-10: was "Endpoints". Two problems. (1) The word carries an unrelated
+%   sense elsewhere in the dissertation -- sec:motivation and sec:hybrid use "MPI endpoints"
+%   for the message-passing processes -- and nothing told the reader which was meant.
+%   (2) The subsection holds TWO tables and the old title described only the second:
+%   tab:strong20m-best covers all six node counts, tab:strong20m-endpoints only the 32-node
+%   row. The new title names both, and the added sentence says what "endpoint" means here
+%   at its first load-bearing use in this sense. Table LABELS were left alone
+%   (tab:strong20m-endpoints, and the CSVs strong_scaling_20m_endpoints.csv that generate
+%   them) so the provenance chain to the analysis scripts still greps.
 
 \begin{table}[htbp]
   \centering
@@ -1717,7 +1804,7 @@ node count. The 2D margin stays below 6.9\%; the 3D margin reaches 281.3\% at 32
 \end{table}
 
 At 32 nodes, 2D speedups cluster at 27.3--29.8 because each layout uses its own one-node
-baseline, although endpoint runtimes differ by 45\% (\Cref{tab:strong20m-endpoints}). In
+baseline, although the runtimes there differ by 45\% (\Cref{tab:strong20m-endpoints}). In
 3D the speedup and runtime rankings agree.
 
 \begin{table}[htbp]
@@ -1878,11 +1965,29 @@ this system, so flat MPI has \texttt{-log\_view} evidence only. Of the twelve pr
 eleven are used. The 16-node $16\times8$ baseline profile is rejected on its own content:
 MAP resolved no library symbols in it, so it carries no cost information.
 
-The solve-window scope keeps only the samples in which cores are inside \texttt{KSPSolve}
-and none is inside \texttt{PCSetUp}, which approximates the repeated-solve phase from the
-profile alone. It is a time window, not the PETSc \texttt{RepeatedSolves} logging stage, and
+MAP works by photographing every core at a fixed interval and recording, for each one, the
+function it is executing and the library that function belongs to. The solve window keeps
+only those photographs in which at least one core is inside \texttt{KSPSolve} and none is
+still inside \texttt{PCSetUp}: the stretches of the run during which the program is solving
+and nothing is still building the GAMG hierarchy. Core-time is then the number of cores
+found in a given library, summed over the kept photographs, and the shares below are that
+count divided by the total over all libraries. The window is recovered from the profile
+itself, so it is a span of time and not the PETSc \texttt{RepeatedSolves} logging stage, and
 the two must not be quoted as the same quantity. \Cref{tab:map-shares} gives the resulting
 shares and \Cref{fig:map-shares} plots them.
+% PLAINER 2026-08-10. The old wording named the rule ("samples in which cores are inside
+%   KSPSolve and none is inside PCSetUp") without saying what a sample is or how a share is
+%   formed from it, so "solve-window core-time" was an undefined unit at every later use
+%   (sec:map-matrix, sec:rq3, sec:guidance). Nothing here is a new claim: the sampling
+%   description is MAP's documented behaviour \cite{linaro_map_2504}, and the window rule
+%   and the active_cores sum are exactly what analyze_map_profiles.py does -- see its
+%   `flush()` (a sample is kept when sample["in_ksp"] > 0 and sample["in_pcsetup"] == 0) and
+%   `to_frame()` (100 * counts[category] / counts["total"], over leaf `active_cores`).
+%   READER TRAP this is meant to close: MAP's own Libraries tab reports the WHOLE RUN, in
+%   which GAMG setup's dense QR and SVD (dgeqrf, dorgqr, dgesvd) put LibSci several times
+%   higher than the solve window does. Whole-run BLAS share reaches 6.3% in these same
+%   profiles against 2.1% inside the window (map_call_tree_shares.csv, whole_blas_percent
+%   vs solve_blas_percent). A GUI number and a number from this section are not comparable.
 
 \begin{table}[htbp]
   \centering
@@ -1940,10 +2045,26 @@ barrier behaviour being measured, so the absolute percentages overstate what an
 uninstrumented run would show.
 
 Within those limits the table answers a question \Cref{ch:multinode} could not, at the level
-of accounting rather than of mechanism. The cost that grows with threads per rank, and that
-hybridisation has to repay before it pays off, is spent idle in the OpenMP runtime: what
-grows is time in \texttt{cpu\_relax}, \texttt{do\_spin} and \texttt{\_\_futex\_wait}, not
-time in the compute kernels. NUMA placement is excluded on topology alone. A rank of eight
+of accounting rather than of mechanism. That chapter measured time per solve, in which the
+two sides of the trade are already netted against each other: it could show where the
+balance turns against more threads per rank, but not what those threads cost. Attributing
+each sample of core-time to the library owning its frame separates the two sides. The cost
+that grows with threads per rank, and that hybridisation has to repay before it pays off,
+is spent idle in the OpenMP runtime: what grows is time in \texttt{cpu\_relax},
+\texttt{do\_spin} and \texttt{\_\_futex\_wait}, not time in the compute kernels.
+% EXPANDED 2026-08-10: "a question \Cref{ch:multinode} could not [answer]" never said which
+%   question, so the paragraph's own point had to be reconstructed from the sentences after
+%   it. Now named: Ch4's instrument is time per solve, a NET quantity, so it can locate the
+%   turn against more threads per rank but cannot decompose it. Compare sec:bottleneck,
+%   which states its Ch4 question explicitly ("whether the layout effect tracks the share of
+%   the solve exposed to inter-process synchronisation"); this sentence is its counterpart
+%   for the cost side and was the only one of the pair left implicit.
+%   No new claim. "Attributing each sample of core-time to the library owning its frame" is
+%   tab:map-shares' own stated basis (its caption: "by the library owning the executing
+%   frame"), not a fresh description of the method. "where the balance turns against more
+%   threads per rank" is deliberately regime-neutral: 16x8 wins no weak-scaling point but IS
+%   fastest in 3D fixed-size at 32 nodes, so "adding threads stops paying" would have been
+%   false as a flat statement. NUMA placement is excluded on topology alone. A rank of eight
 threads crosses a shared-L3 boundary but still fits inside one 16-core NUMA region, so no
 layout in this study puts a rank across two NUMA regions and the four cannot differ in that
 respect (\Cref{tab:layouts}).
@@ -1964,10 +2085,25 @@ the other half of the trade, on the full matrix and without a profiler.
 
 The last observation is negative and worth stating. Threaded LibSci is linked into the
 production build, and PETSc's sparse solve path barely calls it: BLAS accounts for at most
-2.1\% of solve-window core-time in any LibSci profile, and the baseline profiles sample no
-BLAS frame at all. The threaded BLAS library therefore cannot account for the layout
-ordering measured in \Cref{ch:multinode}, which confirms from profile data what
-\Cref{sec:threats} could previously only state as a limit of the evidence.
+2.1\% of solve-window core-time in any LibSci profile, and the baseline build, which is not
+linked against LibSci at all, reproduces the same OpenMP waiting growth without it. The
+threaded BLAS library therefore cannot account for the layout ordering measured in
+\Cref{ch:multinode}, which confirms from profile data what \Cref{sec:threats} could
+previously only state as a limit of the evidence.
+% CORRECTED 2026-08-10: the second clause was "and the baseline profiles sample no BLAS
+%   frame at all". True, but it is true BY CONSTRUCTION and so carried no evidential weight:
+%   arch-omp-opt is not linked against LibSci, and analyze_map_profiles.py's bucket() counts
+%   a frame as `blas` only when its library name starts with "libsci", so those five rows
+%   could not have been anything but 0.00. Read as a second measurement supporting the first
+%   it would have been circular. The clause now states the comparison that DOES carry the
+%   argument, and which the paragraph two above already measures: 16x8 from two to eight
+%   nodes raises OpenMP waiting 57.8% -> 77.5% on the baseline, against 53.5% -> 76.5% on
+%   LibSci. The growth happens in a build with no LibSci in it, so LibSci cannot be causing
+%   it. Numbers unchanged; only the inference is now the sound one.
+%   NOTE for anyone re-deriving 2.1%: it is max(solve_blas_percent) = 2.15 in
+%   map_call_tree_shares.csv, at 2 nodes 16x8, and it is SOLVE-WINDOW scoped. MAP's own
+%   Libraries tab is whole-run and puts LibSci far higher, because GAMG setup's dense QR and
+%   SVD (dgeqrf, dorgqr, dgesvd) live outside the window. See the note at sec:map-matrix.
 
 % BACK-REFERENCE SWEEP 2026-08-09, after the "are consistent with this reading" fix, looking
 %   for the same fault everywhere else: a demonstrative or a defined term whose antecedent is
@@ -2065,9 +2201,9 @@ Three limits apply and none is removable from
 \texttt{-log\_view} alone.
 First, the synchronising events are logged \emph{inside}
 \texttt{MatMult} and its relatives, so this is an exposure share and not a term in an
-additive time budget. Summing every non-container event against \texttt{KSPSolve} gives
-116--372\%, because \texttt{MatMult} and its relatives are themselves containers for the
-halo exchange: the same wait is counted once in \texttt{MatMult}, once in the
+additive time budget. Summing every event that is not itself a container for others gives
+116--372\% of \texttt{KSPSolve}, because \texttt{MatMult} and its relatives are containers
+for the halo exchange: the same wait is counted once in \texttt{MatMult}, once in the
 \texttt{VecScatter} pair, and once in \texttt{SFPack}/\texttt{SFUnpack}.
 
 Second, each event time is a maximum over ranks, and different events may attain their
@@ -2089,10 +2225,24 @@ rises monotonically with node count for every layout and along each weak-scaling
 separately, and at 21 of the 22 size--node points it is strictly ordered by MPI rank count:
 fewer ranks, less exposure. The chains are panelled apart because they do not coincide: the
 smaller per-core problem is the more exposed one, by up to 15.5 percentage points in 2D and
-8.5 in 3D at the same node count, a difference comparable to the layout separation the
-figure exists to show. The plotted share is
+17.2 in 3D at the same node count and layout, a difference comparable to the layout
+separation the figure exists to show. The plotted share is
 the sum of the two event classes, which sit on disjoint call paths: the halo exchange is
-reached from \texttt{MatMult} and its relatives, the reductions directly from CG. 
+reached from \texttt{MatMult} and its relatives, the reductions directly from CG.
+% CORRECTED 2026-08-10: the 3D chain gap was "8.5", against 2D's 15.5, on two DIFFERENT
+%   scopes. Recomputed from tables/repeated_fullnode_event_shares.csv, sync_pct medians over
+%   the three repetitions, differencing the 40k chain against the 80k chain at each (node
+%   count, layout): the 2D maximum is 15.52 pt, at 16 nodes with 128x1 (82m 41.007 vs 165m
+%   25.489), which is both the flat-MPI maximum and the maximum over all four layouts. The
+%   3D maximum over all four layouts is 17.21 pt, at 8 nodes with 32x4 (41m 62.331 vs 82m
+%   45.124). 8.5 is only the 3D FLAT-MPI maximum (8.42 pt, 8 nodes, 41m 71.154 vs 82m
+%   62.731). So 15.5 was all-layout and 8.5 was 128x1-only. Both numbers are now all-layout,
+%   and "and layout" was added to the sentence to state the scope. The alternative fix --
+%   keeping 8.5 and scoping both to 128x1 -- was rejected because the sentence exists to
+%   justify panelling the chains apart in figures that show all four layouts.
+%   The 20m rep-1 defect recorded at sec:contributions does not reach this number: 20m sits
+%   at 2 and 4 nodes and neither maximum is there, and both are medians, which the defect
+%   cannot move because its bad value is always the largest of the three repetitions.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{ksp2d_sync_share}
