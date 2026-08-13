@@ -1,0 +1,63 @@
+# MSc Meeting Minutes - 11-June-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Ongoing Actions
+
+* PETSc matrix representation comparison
+* Benchmark problem-size selection
+
+## Minutes
+
+### PETSc Matrix Types
+
+* Try and understand the different PETSc sparse matrix types and compare their characteristics.
+* Investigate the differences between AIJ, symmetric block AIJ (SBAIJ), and SELL matrix formats.
+* Compare sequential and distributed-memory variants of each applicable matrix format.
+* Test the following matrix creation and preallocation routines:
+
+```c
+PetscCall(MatCreate(PETSC_COMM_WORLD, &A));
+PetscCall(MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m * n, m * n));
+PetscCall(MatSetFromOptions(A));
+
+PetscCall(MatMPIAIJSetPreallocation(A, 5, NULL, 5, NULL));
+PetscCall(MatSeqAIJSetPreallocation(A, 5, NULL));
+PetscCall(MatSeqSBAIJSetPreallocation(A, 1, 5, NULL));
+PetscCall(MatMPISBAIJSetPreallocation(A, 1, 5, NULL, 5, NULL));
+PetscCall(MatMPISELLSetPreallocation(A, 5, NULL, 5, NULL));
+PetscCall(MatSeqSELLSetPreallocation(A, 5, NULL));
+```
+
+* Determine which routines are appropriate for each matrix type selected through `MatSetFromOptions()`.
+* Compare storage structure, symmetry requirements, preallocation behaviour, memory usage, and performance.
+
+### Problem Sizes
+
+* Configure and test multiple benchmark problem sizes.
+* Select problem sizes so that the approximate number of unknowns per core remains within:
+
+```text
+10,000 < N / C < 1,000,000
+```
+
+* Here, `N` is the total problem size and `C` is the number of processing cores.
+* Use this range to choose meaningful problem sizes for different core counts and avoid cases that are too small or excessively large per core.
+
+## Actions
+
+### LL
+
+* Run experiments using AIJ, SBAIJ, and SELL matrix formats where applicable.
+* Test both sequential and MPI matrix variants.
+* Document the functional and performance differences between the matrix formats.
+* Confirm the correct preallocation routine and options for each matrix type.
+* Prepare benchmark configurations with problem sizes satisfying `10,000 < N / C < 1,000,000`.
+* Record matrix type, total problem size, core count, unknowns per core, runtime, and memory usage where available.
+
+## Date of Next Meeting (DONM)
+
+- TBD

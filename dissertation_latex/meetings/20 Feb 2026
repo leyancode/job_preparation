@@ -1,0 +1,120 @@
+# MSc Weekly Plan — Week of 20 Feb 2026
+
+## 1. Finalise and Stabilise Experimental Framework
+
+### 1.1 Debug and Validate Job Scripts
+
+* Ensure the rank × thread grid script runs without step errors.
+* Confirm correct resource mapping:
+
+  * `--ntasks` = MPI ranks
+  * `--cpus-per-task` = OpenMP threads
+  * `OMP_NUM_THREADS` matches `cpus-per-task`
+* Check output structure:
+
+  * Log files generated correctly
+  * CSV file contains all configurations
+  * Correct number of repetitions per configuration
+
+### 1.2 Correctness Verification
+
+Test a subset of configurations (e.g. 1×1, 8×4, 32×4, 128×1):
+
+* Check iteration count consistency
+* Check error norm consistency
+* Ensure no configuration changes numerical behaviour
+
+Goal:
+Confirm that performance differences come from parallel scaling, not algorithmic differences.
+
+---
+
+## 2. Performance Analysis (Speedup & Efficiency)
+
+Using the collected CSV data:
+
+* Compute median runtime per configuration (to reduce noise)
+* Select a baseline configuration (e.g. 1×1)
+* Compute:
+
+  * Speedup
+  * Parallel efficiency
+
+Investigate:
+
+* Strong scaling (fixed threads, increasing ranks)
+* Thread scaling (fixed ranks, increasing threads)
+* Hybrid trade-offs at fixed total core counts
+
+Deliverables:
+
+* One preliminary table of speedup and efficiency
+* One simple performance plot (if time permits)
+
+---
+
+## 3. Preliminary Report Draft
+
+Start writing a short technical draft including:
+
+### Experimental Setup
+
+* System: ARCHER2 (single node, 128 cores)
+* Software: PETSc OpenMP backend
+* Benchmark: ex2
+* Build: `arch-omp-opt`
+* Binding:
+
+  * `OMP_PLACES=cores`
+  * `OMP_PROC_BIND=close`
+  * `--hint=nomultithread`
+
+### Methodology
+
+* Rank × thread grid up to 128 cores
+* Fixed problem size
+* Multiple repetitions per configuration
+* Median runtime used for analysis
+
+### Early Observations
+
+* Initial scaling behaviour
+* Efficiency trends
+* Any deviations from ideal scaling
+
+Goal:
+Produce a short 1–2 page internal draft.
+
+---
+
+## 4. Compiler Comparison
+
+* Rebuild PETSc using GNU toolchain (baseline)
+* If possible, test alternative optimisation settings
+
+Compare:
+
+* Runtime differences
+* Iteration consistency
+* Numerical stability
+
+Goal:
+Assess whether compiler choice affects scaling results.
+
+---
+
+## 5. Cross-System Validation (Cirrus)
+
+* Run a reduced configuration set on Cirrus
+* Validate:
+
+  * Job script portability
+  * Thread placement behaviour
+  * Runtime trends
+
+Do not run full grid until stability is confirmed.
+
+Goal:
+Ensure experimental methodology is portable across systems.
+
+

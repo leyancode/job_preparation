@@ -1,0 +1,51 @@
+# MSc Meeting Minutes — 04-April-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Ongoing Actions
+
+* Feasibility Study (Project Preparation) — content revision and discussion
+
+## Minutes
+
+### Feasibility Study Review
+
+* Discussed preliminary revisions to the feasibility study document.
+* Reviewed structure, content clarity, and technical presentation.
+* Identified areas for refinement and strengthening of argumentation.
+
+### Feedback & Corrections
+
+* PB provided comments on:
+  - Technical depth and alignment with dissertation goals
+  - Clarity of experimental methodology and expected outcomes
+  - References and literature coverage
+
+* LL to incorporate feedback and revise accordingly.
+
+### Communication
+
+* Most outstanding questions and clarifications resolved via email correspondence (email exchange summarised in subsequent meeting notes).
+* Async feedback loop proved efficient for iterative document refinement.
+
+### Next Steps
+
+* Incorporate suggested revisions to feasibility study.
+* Continue iterative revision cycle.
+* Prepare for approval and sign-off pending final revisions.
+
+## Actions
+
+### LL
+* Revise feasibility study based on PB's feedback.
+* Address technical concerns and improve clarity as discussed.
+* Prepare updated version for next review cycle.
+
+### PB
+* Provide detailed written feedback on updated draft (email correspondence).
+
+## Date of Next Meeting (DONM)
+- Friday 10-April-2026

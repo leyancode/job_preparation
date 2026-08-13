@@ -1,0 +1,42 @@
+Meeting Notes
+
+Date: 25 March 2026
+Meeting with: Supervisor
+Project: PETSc Benchmark and Optimisation
+
+1. Project Proposal Focus
+Continue refining and developing the project proposal.
+Ensure that the research questions, hypotheses, and scope are clearly defined and aligned with preliminary findings.
+Strengthen the motivation and clearly articulate:
+What problem is being addressed
+Why it is important in modern HPC contexts
+What contributions the project aims to make
+2. Multi-node Experiments
+Extend current experiments beyond single-node execution.
+Test performance on multiple nodes, including configurations such as:
+2 nodes
+4 nodes
+8 nodes
+
+Purpose:
+
+Evaluate scalability under increased communication pressure.
+Investigate whether hybrid MPI+OpenMP becomes more advantageous at larger scale.
+3. Alternative Architectures / Systems
+Explore running experiments on different architectures or platforms, such as:
+EIDF (Edinburgh International Data Facility)
+
+Goal:
+
+Compare performance behaviour across systems.
+Identify whether conclusions drawn from ARCHER2 are architecture-specific or more general.
+4. Kernel-level Optimisation
+Investigate optimisation opportunities at the PETSc kernel level.
+Specifically:
+Rebuild or modify functions such as VecMax and VecDot
+Aim to improve OpenMP utilisation within these routines
+
+Objective:
+
+Increase the proportion of computation effectively parallelised with OpenMP.
+Evaluate whether kernel-level optimisation leads to measurable performance improvements.

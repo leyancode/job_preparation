@@ -1,0 +1,63 @@
+# MSc Meeting Minutes — 10-April-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Ongoing Actions
+
+* Feasibility Study (Project Preparation) — final revisions
+
+## Completed Actions
+
+* Revisions to feasibility study document incorporating previous feedback
+* Email-based discussion of outstanding technical questions
+
+## Minutes
+
+### Feasibility Study Status
+
+* Reviewed status of feasibility study revision following 04-April feedback.
+* Document structure and content now substantially refined.
+* All major technical concerns addressed through iterative email correspondence.
+
+### Key Revisions Completed
+
+* Experimental methodology section updated for clarity.
+* Performance metrics and success criteria better defined.
+* Scope and timeline adjustments made based on resource availability.
+* Literature review expanded with additional references.
+
+### Email Correspondence Summary
+
+* Bulk of feedback and questions resolved asynchronously via email over previous week.
+* Key topics covered via email:
+  - Technical clarifications on hybrid MPI+OpenMP strategy
+  - Scope adjustments for single-node and multi-node studies
+  - Feasibility assessment of initial benchmarking targets
+
+### Approval Status
+
+* Feasibility study now near finalization pending minor polishing.
+* Next phase will focus on transition from Project Preparation to full dissertation research.
+
+## Actions
+
+### LL
+* Final polishing of feasibility study document.
+* Prepare document for formal submission/approval.
+* Begin transition planning to main research phase.
+
+### PB
+* Review final feasibility study version.
+* Provide approval for Project Preparation phase completion.
+
+## Notes
+
+* Minimal in-person discussion required this week due to effective email-based collaboration.
+* Document iteration and review process accelerated through async communication channel.
+* Team coordination remains on track despite reduced synchronous meeting time.
+
+## Date of Next Meeting (DONM)
+- TBD (pending feasibility study approval and project phase transition)

@@ -1,0 +1,37 @@
+# MSc Meeting Minutes - 12-May-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Ongoing Actions
+
+* Dissertation presentation slides - revision and improvement
+
+## Minutes
+
+### PPT Revision
+
+* Reviewed the current version of the presentation slides.
+* Discussed small improvements needed before the next review.
+* Some slides require more detail to explain the methods and results clearly.
+* Large images should be split across multiple slides to improve readability.
+* Several charts need to be updated with clearer labels, legends, and formatting.
+
+## Actions
+
+### LL
+
+* Add missing details to the PPT.
+* Split large images into separate slides where needed.
+* Update charts and improve figure formatting.
+* Prepare a revised version for feedback.
+
+### PB
+
+* Review the updated slides and provide further feedback.
+
+## Date of Next Meeting (DONM)
+
+- TBD

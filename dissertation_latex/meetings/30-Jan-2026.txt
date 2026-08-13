@@ -1,0 +1,47 @@
+# MSc Meeting Minutes — 30-Jan-2026 (Kick-off)
+
+## Present
+- Leyan Li (LL)
+- Paul Bartholomew (PB)
+
+## Ongoing Actions
+- N/A (kick-off meeting)
+
+## Completed Actions
+- N/A (kick-off meeting)
+
+## Minutes
+- Discussed overall project goal: assess the PETSc OpenMP backend for MPI+OpenMP (MPI+OMP) execution.
+- Key requirements:
+  - Identify suitable benchmark drivers.
+  - Build PETSc with and without the OpenMP backend.
+- Candidate investigation questions:
+  - Does the assembly phase or the solver phase benefit more from MPI+OMP?
+  - Sensitivity to rank/thread placement (affinity and mapping).
+  - Sensitivity to compiler / OpenMP runtime (e.g., Cray, GNU, AOCC).
+  - Solver dependence: do different solvers benefit differently?
+  - Problem dependence: are some PDEs more amenable to MPI+OMP?
+- Candidate benchmark problems (likely available in PETSc examples):
+  - Poisson equation
+  - Navier–Stokes equations
+  - PETSc integration with HPCG as a Poisson driver (possible extension)
+- Project preparation phase goals:
+  - Demonstrate project viability:
+    - access to required machines
+    - ability to build PETSc
+    - initial experiments indicating potential speedup and/or early profiling insights
+  - Start with a simple PETSc matvec example to explore the OpenMP backend and establish correctness + initial performance workflow.
+
+## Actions
+- LL:
+  - Confirm access to MSc dissertation GitLab and perform basic repository setup (README + meeting minutes).
+  - Confirm access to required machines (initially Cirrus and ARCHER2).
+  - Attempt PETSc builds on at least one machine:
+    - Can PETSc be built with OpenMP backend?
+    - Can it be built with available compilers (Cray/GNU/AOCC as applicable)?
+  - Review PETSc examples for problems of interest (Poisson, Navier–Stokes, or others) and check whether/how they use OpenMP.
+- PB:
+  - Identify starting reading materials for MPI+OpenMP background.
+
+## Date of Next Meeting (DONM)
+- Thursday 5-Feb-2026

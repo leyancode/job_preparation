@@ -1,0 +1,14 @@
+# MSc Meeting Minutes - 24-July-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Actions
+
+* Rerun the 2D and 3D benchmark sweeps with `25,000 <= problem size / cores <= 100,000`.
+* Use 1, 2, 4, 8, 16, and 32 nodes.
+* Test 1, 2, 4, and 8 OpenMP threads per MPI rank.
+* Continue using `ex2_repeat.c` for the 2D benchmark.
+* Create `3d-stencil_repeat.c` for the 3D benchmark, using the same solvers as the 2D benchmark.

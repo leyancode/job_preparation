@@ -1,0 +1,25 @@
+# MSc Meeting Minutes - 03-July-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Minutes
+
+* Continue profiling experiments across a wider set of MPI+OpenMP configurations.
+* Include runs using 1, 2, 4, and 8 OpenMP threads across 2, 8, and 16 core cases.
+* Use the profiling results to verify whether MPI scaling is genuinely related to the observed runtime reduction.
+* Investigate where OpenMP is active and where it is not active in the current runs.
+* Analyse why the OpenMP calculation takes a long time and whether this part of the code can be optimised.
+* If the above profiling and analysis are completed, try the SELL matrix type as a possible next experiment.
+
+## Actions
+
+### LL
+
+* Run additional profiling experiments for 1, 2, 4, and 8 OpenMP threads on 2, 8, and 16 core cases.
+* Compare MPI scaling behaviour against runtime changes to confirm whether the scaling trend explains the runtime reduction.
+* Identify which parts of the run use OpenMP and which parts do not.
+* Investigate the expensive OpenMP calculation regions and look for possible optimisation opportunities.
+* If the profiling analysis is complete, test the SELL matrix type.

@@ -1,0 +1,31 @@
+# MSc Meeting Minutes - 18-June-2026
+
+## Present
+
+* Leyan Li (LL)
+* Paul Bartholomew (PB)
+
+## Minutes
+
+* Before Monday 22-June-2026, organise and classify the benchmark data according to the problem-size tables.
+* Include CU usage in the data tables.
+* Use the definition:
+
+```text
+1 CU = 1 node for 1 hour
+```
+
+* This applies whether the node uses 1 core or 128 cores.
+* Before the next meeting, complete and run all scripts for the 3D problem-size experiments.
+
+## Actions
+
+### LL
+
+* Finish problem-size data organisation and classification before Monday 22-June-2026.
+* Add CU usage to the results tables.
+* Complete and run the 3D problem-size scripts before the next meeting.
+
+## Date of Next Meeting (DONM)
+
+- TBD
